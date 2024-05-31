@@ -65,7 +65,7 @@ function addPlayer(name, powerLevel) {
     // add remove button functionalities
     newPlayerEl.querySelector('.rm-player-btn').addEventListener("click", function (el) {
         removePlayer(newId);
-    })
+    });
 
     // add node to player list
     playerContainer.appendChild(newPlayerEl);
