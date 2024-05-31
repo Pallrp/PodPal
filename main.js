@@ -1,8 +1,8 @@
 function loadPage() {
     addPlayer("Maximus Timmy", Powerlevel.CASUAL);
-    addPlayer("Bruhman Lower", Powerlevel.MIDLOWER);
-    addPlayer("John Doe", Powerlevel.MID);
-    addPlayer("Peter Rizzman", Powerlevel.MIDUPPER);
+    addPlayer("Bruhman Lower", Powerlevel.MEDIUM);
+    addPlayer("John Doe", Powerlevel.MEDIUM);
+    addPlayer("Peter Rizzman", Powerlevel.COMP);
     addPlayer("Chad.", Powerlevel.COMP);
 }
 
@@ -12,10 +12,9 @@ var playerCount = 0;
 
 const Powerlevel = {
     CASUAL: 1,
-    MIDLOWER: 2,
-    MID: 3,
-    MIDUPPER: 4,
-    COMP: 5
+    MEDIUM: 2,
+    HIGH: 3,
+    COMP: 4
 };
 
 function getPowerClass(powerLevel) {
@@ -23,9 +22,8 @@ function getPowerClass(powerLevel) {
     let level = "";
     switch (powerLevel) {
         case (Powerlevel.CASUAL):   level = "casual";   break;
-        case (Powerlevel.MIDLOWER): level = "lowermid"; break;
-        case (Powerlevel.MID):      level = "mid";      break;
-        case (Powerlevel.MIDUPPER): level = "uppermid"; break;
+        case (Powerlevel.MEDIUM):   level = "medium";   break;
+        case (Powerlevel.HIGH):     level = "high";     break;
         case (Powerlevel.COMP):     level = "comp";     break;
         default:                    level = "err";      break;
     }
@@ -35,11 +33,10 @@ function getPowerClass(powerLevel) {
 function getPowerVerboseName(powerLevel) {
     let powerStr = ""
     switch (powerLevel) {
-        case (Powerlevel.CASUAL):   powerStr = "Casual";        break;
-        case (Powerlevel.MIDLOWER): powerStr = "Lower mid";     break;
-        case (Powerlevel.MID):      powerStr = "Mid";           break;
-        case (Powerlevel.MIDUPPER): powerStr = "Upper mid";     break;
-        case (Powerlevel.COMP):     powerStr = "Competetive";   break;
+        case (Powerlevel.CASUAL):   powerStr = "Casual/Precon"; break;
+        case (Powerlevel.MEDIUM):   powerStr = "Medium";        break;
+        case (Powerlevel.High):     powerStr = "High";          break;
+        case (Powerlevel.COMP):     powerStr = "CEDH";          break;
         default:                    powerStr = "Error";         break;
     }
     return powerStr;
@@ -59,10 +56,11 @@ function addPlayer(name, powerLevel) {
     newPlayerEl.querySelector('.player-name').innerHTML = name;
 
     let levelCls = getPowerClass(powerLevel);
-    newPlayerEl.querySelector('.player-power-container').classList.add(levelCls);
-    
     let levelName = getPowerVerboseName(powerLevel);
-    newPlayerEl.querySelector('.player-power-container').innerHTML = levelName;
+    let powerContainer = newPlayerEl.querySelector('.player-power-container')
+    powerContainer.classList.add(levelCls);
+    powerContainer.innerHTML = levelName;
+    newPlayerEl.setAttribute('value', powerLevel);
     
     // add remove button functionalities
     newPlayerEl.querySelector('.rm-player-btn').addEventListener("click", function (el) {
