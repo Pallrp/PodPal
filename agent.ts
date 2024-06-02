@@ -1,21 +1,29 @@
 const MAXSEATS = 4;
+// id -> Player dictionary for all players
+const PLAYERS = {};
+// TODO: async
 
 
 class Heuristic {
     constructor() {
 
     }
-    evalPlayer(playersSet) {
-
+    evalPlayer(playersSet:Set<number>) : Player|null {
+        // TODO: pick player with estamated least branching paths
+        return null;
     }
-    evalSeat(player, tablesSet) {
-
+    evalState(state:State) {
+        // TODO: return "heuristic score" of the state
     }
     
 }
 
 class Environment {
-    constructor(players) {
+    players:Array<Player>
+    maxTables:number
+    tables:Set<Table>
+
+    constructor(players:Array<Player>) {
         this.players = players;
         this.maxTables = Math.round(players.length / 3);
         this.constructTables();
@@ -23,26 +31,41 @@ class Environment {
 
     constructTables() {
         for (let i = 0; i < this.maxTables; i++) {
-            this.tables.push(
+            this.tables.add(
                 new Table(i + 1)
             );
         }
     }
     
-    isGoalState(state) {
+    isGoalState(state:State) {
         // return true if all seats filled
         return state.totalSeatedPlayers() == this.players.length;        
     }
 
-    legalActions(state, player) {
+    legalActions(state:State, player:Player) : Array<Table> {
         // legal seats for player instead of (for each player, for each table) decreases the scope by a considerable margin
+        var availableTables:Array<Table> = []
+        for (let table of state.tables) {
+            if (!table.isFull()) {
+                if (!table.containsBlackList(player)) {
+                    availableTables.push(table);
+                }
+            }
+        }
+        return availableTables;
+    }
+
+    getInitialState() : State {
+        return new State(null, this.tables);
     }
 }
 
 class State {
-    // what constitutes as a state?
+    prevState:State|null
+    tables:Array<Table>
     // a possible assignment of variables of course
-    constructor(tables) {
+    constructor(prevState:State|null, tables:Set<Table>) {
+        this.prevState = prevState;
         this.tables = Array.from(tables);
     }
     totalSeatedPlayers() {
@@ -55,25 +78,30 @@ class State {
 }
 
 class SearchAgent {
-    constructor(heuristic, environment) {
+    heuristic:Heuristic
+    env:Environment
+    unsortedPlayers:Set<number>
+    constructor(heuristic:Heuristic, environment:Environment) {
         this.heuristic = heuristic;
         this.env = environment;
-        this.unsortedPlayers = new Set(environment.players);
+        this.unsortedPlayers = new Set();
+        environment.players.map((player) => {this.unsortedPlayers.add(player.id)});
     }
 
-    recursiveSearch(currentState) {
-        if (this.env.isGoalState(currentState)) {
-            
-            return;
+    recursiveSearch(previousState:State) {
+        if (this.env.isGoalState(previousState)) {    
+            return previousState;
         }
+
+        var bestAction:number|null = null;
+        var bestScore:number = Infinity;
+        
         // choose which player to order first
-        var bestAction = null;
-        var bestScore = Infinity;
-        var player = this.heuristic.evalPlayer(this.unsortedPlayers);
+        var player:Player|null = this.heuristic.evalPlayer(this.unsortedPlayers);
         // when player has been chosen, choose which table to sit him at
         let actions = this.env.legalActions(currentState, player);
         for (let action in actions) {
-            let score = this.heuristic.evalSeat(player, action);
+            let score = this.heuristic.evalState(player, action);
             if (score == bestScore) {
                 bestAction = action
             }
@@ -86,20 +114,23 @@ class SearchAgent {
     }
 
     start() {
-        let initialState = this.env.getState();
-        recursiveSearch();
+        let initialState:State = this.env.getInitialState();
+        this.recursiveSearch(initialState);
     }
 }
 
 class Table {
-    constructor(id) {
+    id:number
+    seats:Set<Player>
+
+    constructor(id:number) {
         this.id = id;
         this.seats = new Set();
     }
     isFull() {
         return this.seats.size <= MAXSEATS;
     }
-    containsBlackList(player) {
+    containsBlackList(player:Player) {
         for (let blacklistedPlayer of player.blacklist.entries()) {
             if (blacklistedPlayer in this.seats) {
                 return true;
@@ -107,7 +138,7 @@ class Table {
         }
         return false;
     }
-    containsWhitelist(player) {
+    containsWhitelist(player:Player) {
         for (let whitelistedPlayer of player.whitelist.entries()) {
             if (whitelistedPlayer in this.seats) {
                 return true;
@@ -128,7 +159,13 @@ class Table {
 
 /* The node for a player */
 class Player {
-    constructor(id, name, power) {
+    id:number
+    name:string
+    power:number
+    whitelist:Set<number>
+    blacklist:Set<number>
+
+    constructor(id:number, name:string, power:number) {
         this.id = id;
         this.name = name;
         this.power = power;
@@ -137,36 +174,33 @@ class Player {
     }
     /* Sets the whitelist variable as the set or iterable */
     setWhitelist(whitelist) {
-        if (typeof whitelist !== 'Set') {
-            whitelist = new Set(whitelist);
-        }
         this.whitelist = whitelist;
     }
 
     /* Sets the blacklist variable as the set or iterable */
     setBlacklist(blacklist) {
-        if (typeof blacklist !== 'Set') {
-            blacklist = new Set(blacklist);
-        }
         this.blacklist = blacklist;
     }
 }
 /* Returns a list of all added players, instantiated in a list of Player classes */
-function collectPlayers() {
-    document.getElementById('players-added-container');
+function collectPlayers():Array<Player> {
+    let playersContainer = (document.getElementById('players-container') as HTMLElement);
     let playersList = new Array();
 
-    document.childNodes.forEach(function (elem) {
-        let id = elem.id;
-        id = id.split("-")[1];
-        let name = elem.querySelector('player-name').innerHTML.trim();
-        let newP = new Player(id, name, power, whitelist, blacklist);
+    Array.from(playersContainer.children).forEach((function (elem) {
+        let id:number = Number(
+            (elem.getAttribute("id") as string).split("-")[1]
+        );
+        let name:string = (elem.querySelector('player-name') as HTMLElement).innerHTML.trim();
+        let power:number = Number(elem.getAttribute("value") as string);
+        let newP = new Player(id, name, power);
         // TODO: add whitelist
         //newP.setWhitelist(stuff);
         // TODO: add blacklist
         //newP.setBlacklist(stuff);
         playersList.push(newP);
-    });
+    }));
+    return playersList;
 }
 
 function doSearch() {
