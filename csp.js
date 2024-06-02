@@ -435,39 +435,9 @@ function prune(pVar, value, prunings=null) {
     return prunings;
 }
 /* Adds a value to a dict's value set, if key does not exist, create a new set */
-function addValToDictSet(dictObj, key, value) {
-    if (!(key in dictObj)) {
-        dictObj[key] = new Set();
-    }
-    dictObj[key].add(value);
-}
+
 
 // ########### ??? idno what to name this, other stuff that uses CSP stuff but is not directly CSP stuff ##########
-
-class Player {
-    constructor(id, name, power) {
-        this.id = id;
-        this.name = name;
-        this.power = power;
-        this.whitelist = new Set();
-        this.blacklist = new Set();
-    }
-    /* Sets the whitelist variable as the set or iterable */
-    setWhitelist(whitelist) {
-        if (typeof whitelist !== 'Set') {
-            whitelist = new Set(whitelist);
-        }
-        this.whitelist = whitelist;
-    }
-
-    /* Sets the blacklist variable as the set or iterable */
-    setBlacklist(blacklist) {
-        if (typeof blacklist !== 'Set') {
-            blacklist = new Set(blacklist);
-        }
-        this.blacklist = blacklist;
-    }
-}
 
 /* 
     Collects all players added as an array of players
@@ -476,22 +446,6 @@ class Player {
         ...
     ]
 */
-function collectPlayers() {
-    document.getElementById('players-added-container');
-    let playersList = new Array();
-
-    document.childNodes.forEach(function (elem) {
-        let id = elem.id;
-        id = id.split("-")[1];
-        let name = elem.querySelector('player-name').innerHTML.trim();
-        let newP = new Player(id, name, power, whitelist, blacklist);
-        // TODO: add whitelist
-        //newP.setWhitelist(stuff);
-        // TODO: add blacklist
-        //newP.setBlacklist(stuff);
-        playersList.push(newP);
-    });
-}
 
 function addConstraints(CSP, playersList) {
     /*
