@@ -371,6 +371,11 @@ class SearchAgent {
         this.env.playersList.map((player) => {this.unsortedPlayers.add(player.id)});
     }
 
+    addSolution(state:State) {
+        // TODO: maybe add a callback here, usable in frontend?
+        this.solutions.add(state);
+    }
+
     search() {
 
         var bestAction:State|null = null;
@@ -390,6 +395,7 @@ class SearchAgent {
                 if (bestScore > stateScore) {
                     bestScore = stateScore;
                     bestAction = currentState;
+                    this.addSolution(currentState);
                 }
             }
             // add state to explored
