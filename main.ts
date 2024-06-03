@@ -2,9 +2,14 @@ function loadPage() : undefined {
     addPowerSelections();
     addButtonEvents();
     addPlayer("Maximus Timmy", Powerlevel.CASUAL);
+    addPlayer("Zoomer Zubar", Powerlevel.CASUAL);
     addPlayer("Bruhman Lower", Powerlevel.MEDIUM);
+    addPlayer("Actual Brainrot", Powerlevel.MEDIUM);
+    addPlayer("Scrat", Powerlevel.HIGH);
+    addPlayer("Scrut", Powerlevel.HIGH);
+    addPlayer("Skibidi", Powerlevel.HIGH);
     addPlayer("John Doe", Powerlevel.MEDIUM);
-    addPlayer("Peter Rizzman", Powerlevel.COMP);
+    addPlayer("John Rizzman", Powerlevel.COMP);
     addPlayer("Chad.", Powerlevel.COMP);
 }
 
@@ -52,6 +57,7 @@ function addPowerSelections() {
 }
 const playerTemplateEl = (document.getElementById('player-container-template') as HTMLElement);
 const playerContainer = (document.getElementById('players-container') as HTMLElement);
+const listTemplateEl = (document.getElementById('list-template') as HTMLElement);
 var playerCount = 0;
 
 const Powerlevel = {
@@ -77,7 +83,7 @@ function getPowerClass(powerLevel:number) {
 function getPowerVerboseName(powerLevel:number):string {
     let powerStr = ""
     switch (powerLevel) {
-        case (Powerlevel.CASUAL):   powerStr = "Casual/Precon"; break;
+        case (Powerlevel.CASUAL):   powerStr = "Casual"; break;
         case (Powerlevel.MEDIUM):   powerStr = "Medium";        break;
         case (Powerlevel.HIGH):     powerStr = "High";          break;
         case (Powerlevel.COMP):     powerStr = "CEDH";          break;
@@ -123,23 +129,80 @@ function addPlayer(name:string, powerLevel:number) {
     let newId = "player-" + playerCount;
     newPlayerEl.setAttribute('id', newId);
     // add attributes
-    let a = (newPlayerEl.querySelector('.player-name') as HTMLElement).innerHTML = name;
+    (newPlayerEl.querySelector('.player-name') as HTMLElement).innerHTML = name;
 
     let levelCls = getPowerClass(powerLevel);
     let levelName = getPowerVerboseName(powerLevel);
-    let powerContainer = (newPlayerEl.querySelector('.player-power-container') as HTMLElement)
+    let powerContainer = (newPlayerEl.querySelector('.player-power-container') as HTMLElement);
     powerContainer.classList.add(levelCls);
     powerContainer.innerHTML = levelName;
     powerContainer.setAttribute('value', String(powerLevel));
     
     // add remove button functionalities
-    newPlayerEl.querySelector('.rm-player-btn')?.addEventListener("click", function (el) {
+    newPlayerEl.querySelector('.rm-player-btn')?.addEventListener("click", function (ev) {
         removePlayer(newId);
     });
+    let blacklist:HTMLElement, whitelist:HTMLElement;
+    blacklist = (newPlayerEl.querySelector('.blacklist-container') as HTMLElement);
+    whitelist = (newPlayerEl.querySelector('.whitelist-container') as HTMLElement);
+    newPlayerEl.querySelector('.blacklistbutton')?.addEventListener("click", function (ev) {
+        toggleListVisibility(blacklist)
+    });
+    newPlayerEl.querySelector('.whitelistbutton')?.addEventListener("click", function (ev) {
+        toggleListVisibility(whitelist)
+    });
+
+    // Add drag & drop white/blacklist functionalities
+    newPlayerEl.setAttribute('draggable', 'true');
+    newPlayerEl.addEventListener('dragstart', dragListPlayer);
+    newPlayerEl.addEventListener('dragover', dropListPlayer);
 
     // add node to player list
     playerContainer.appendChild(newPlayerEl);
     sortPlayers();
+}
+
+function addBlackList(playerEl1:HTMLElement, playerEl2:HTMLElement) {
+    addListPlayer('blacklist', playerEl1, playerEl2);
+}
+
+
+function addWhiteList(playerEl1:HTMLElement, playerEl2:HTMLElement) {
+    addListPlayer('whitelist', playerEl1, playerEl2);
+}
+
+function addListPlayer(list:string, playerEl1:HTMLElement, playerEl2:HTMLElement) {
+    let newListP1:HTMLElement = (listTemplateEl.cloneNode() as HTMLElement);
+    let newListP2:HTMLElement = (listTemplateEl.cloneNode() as HTMLElement);
+    // set attributes
+    (newListP1.querySelector('.player-list-name') as HTMLElement).innerHTML = String(playerEl1.querySelector('.player-name')?.innerHTML);
+    newListP1.setAttribute('value', String(playerEl2.getAttribute('id')));
+    (newListP2.querySelector('.player-list-name') as HTMLElement).innerHTML = String(playerEl2.querySelector('.player-name')?.innerHTML);
+    newListP2.setAttribute('value', String(playerEl1.getAttribute('id')));
+    // add remove button event
+    (newListP1.querySelector('.rm-list-btn') as HTMLElement).addEventListener(
+        'click', (ev) => {removeListPlayer(playerEl1, playerEl2);}
+    );
+    (newListP2.querySelector('.rm-list-btn') as HTMLElement).addEventListener(
+        'click', (ev) => {removeListPlayer(playerEl1, playerEl2);}
+    );
+    // add to eachother list
+
+}
+
+function toggleListVisibility(listEl:HTMLElement) {
+    listEl.classList.toggle('d-none');
+}
+
+function removeListPlayer(p1El:HTMLElement, p2El:HTMLElement) {
+
+}
+
+function dropListPlayer(event:Event) {
+
+}
+
+function dragListPlayer(event:DragEvent) {
 }
 
 loadPage();
