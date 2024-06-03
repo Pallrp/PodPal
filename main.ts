@@ -155,54 +155,106 @@ function addPlayer(name:string, powerLevel:number) {
     // Add drag & drop white/blacklist functionalities
     newPlayerEl.setAttribute('draggable', 'true');
     newPlayerEl.addEventListener('dragstart', dragListPlayer);
-    newPlayerEl.addEventListener('dragover', dropListPlayer);
+    newPlayerEl.addEventListener('dragover', (ev) => {ev.preventDefault()});
+    newPlayerEl.addEventListener('drop', dropListPlayer);
 
     // add node to player list
     playerContainer.appendChild(newPlayerEl);
     sortPlayers();
 }
 
-function addBlackList(playerEl1:HTMLElement, playerEl2:HTMLElement) {
-    addListPlayer('blacklist', playerEl1, playerEl2);
+function listsContains(player1:HTMLElement, player2:HTMLElement): boolean {
+    
+    var playerId:string = getListId(player2);
+    let children = player1.querySelector('.whitelist')?.children;
+    if (children != undefined) {
+        for (let i=0; i<children.length; i++){
+            if (children[i].getAttribute('id') == playerId) {
+                // cannot add whitelisted player to blacklist
+                return true;
+            }
+        }
+    }
+    children = player1.querySelector('.blacklist')?.children;
+    if (children != undefined) {
+        for (let i=0; i<children.length; i++){
+            if (children[i].getAttribute('id') == playerId) {
+                // cannot add blacklisted player to blacklist
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
+function addBlackList(playerEl1:HTMLElement, playerEl2:HTMLElement) {
+    if (listsContains(playerEl1, playerEl2)) {
+        return;
+    }
+    addListPlayer('.blacklist', playerEl1, playerEl2);
+}
 
 function addWhiteList(playerEl1:HTMLElement, playerEl2:HTMLElement) {
-    addListPlayer('whitelist', playerEl1, playerEl2);
+    if (listsContains(playerEl1, playerEl2)) {
+        return;
+    }
+    addListPlayer('.whitelist', playerEl1, playerEl2);
+}
+
+function getListId(playerEl:HTMLElement) : string {
+    return "list-" + String(playerEl.getAttribute('id'));
 }
 
 function addListPlayer(list:string, playerEl1:HTMLElement, playerEl2:HTMLElement) {
-    let newListP1:HTMLElement = (listTemplateEl.cloneNode() as HTMLElement);
-    let newListP2:HTMLElement = (listTemplateEl.cloneNode() as HTMLElement);
+    let newListP1:HTMLElement = (listTemplateEl.cloneNode(true) as HTMLElement);
+    let newListP2:HTMLElement = (listTemplateEl.cloneNode(true) as HTMLElement);
     // set attributes
     (newListP1.querySelector('.player-list-name') as HTMLElement).innerHTML = String(playerEl1.querySelector('.player-name')?.innerHTML);
+    newListP1.setAttribute('id', getListId(playerEl1));
     newListP1.setAttribute('value', String(playerEl2.getAttribute('id')));
     (newListP2.querySelector('.player-list-name') as HTMLElement).innerHTML = String(playerEl2.querySelector('.player-name')?.innerHTML);
+    newListP2.setAttribute('id', getListId(playerEl2));
     newListP2.setAttribute('value', String(playerEl1.getAttribute('id')));
     // add remove button event
     (newListP1.querySelector('.rm-list-btn') as HTMLElement).addEventListener(
-        'click', (ev) => {removeListPlayer(playerEl1, playerEl2);}
+        'click', (ev) => {newListP1.remove(); newListP2.remove();}
     );
     (newListP2.querySelector('.rm-list-btn') as HTMLElement).addEventListener(
-        'click', (ev) => {removeListPlayer(playerEl1, playerEl2);}
+        'click', (ev) => {newListP1.remove(); newListP2.remove();}
     );
     // add to eachother list
-
+    playerEl1.querySelector(list)?.appendChild(newListP2);
+    playerEl2.querySelector(list)?.appendChild(newListP1);
 }
 
 function toggleListVisibility(listEl:HTMLElement) {
     listEl.classList.toggle('d-none');
 }
 
-function removeListPlayer(p1El:HTMLElement, p2El:HTMLElement) {
+function dropListPlayer(event:DragEvent) {
+    event.preventDefault();
+    let sourceId:string|undefined = event.dataTransfer?.getData('text/plain');
+    if (sourceId) {
+        const playerDragged = (document.getElementById(sourceId) as HTMLElement);
+        let trg = (event.target as HTMLElement);
+        if (trg.classList.contains('listbutton')) {
+            const playerDropped = (trg.closest('.player-container-instance') as HTMLElement);
+            if (playerDropped && !playerDropped.isEqualNode(playerDragged)) {
 
-}
-
-function dropListPlayer(event:Event) {
-
+                if (trg.classList.contains('blacklistbutton')) {
+                    // blacklist added
+                    addBlackList(playerDragged, playerDropped);
+                } else if (trg.classList.contains('whitelistbutton')) {
+                    // whitelist added
+                    addWhiteList(playerDragged, playerDropped);
+                }
+            }
+        }
+    }
 }
 
 function dragListPlayer(event:DragEvent) {
+    event.dataTransfer?.setData("text/plain", (event.target as HTMLElement).id);
 }
 
 loadPage();
