@@ -93,9 +93,14 @@ function getPowerVerboseName(powerLevel:number):string {
 }
 
 function removePlayer(playerId:string):undefined {
-    let p = document.getElementById(playerId)
-    if (p !== null) {
-        p.remove();
+    let p = (document.getElementById(playerId) as HTMLElement);
+    let listId = getListId(p);
+    // remove player
+    p.remove();
+    // remove all list elements
+    let listElems = document.getElementsByClassName(listId)
+    while (listElems.length > 0) {
+        listElems[0].parentNode?.removeChild(listElems[0]);
     }
 }
 
@@ -169,7 +174,7 @@ function listsContains(player1:HTMLElement, player2:HTMLElement): boolean {
     let children = player1.querySelector('.whitelist')?.children;
     if (children != undefined) {
         for (let i=0; i<children.length; i++){
-            if (children[i].getAttribute('id') == playerId) {
+            if (children[i].classList.contains(playerId)) {
                 // cannot add whitelisted player to blacklist
                 return true;
             }
@@ -178,7 +183,7 @@ function listsContains(player1:HTMLElement, player2:HTMLElement): boolean {
     children = player1.querySelector('.blacklist')?.children;
     if (children != undefined) {
         for (let i=0; i<children.length; i++){
-            if (children[i].getAttribute('id') == playerId) {
+            if (children[i].classList.contains(playerId)) {
                 // cannot add blacklisted player to blacklist
                 return true;
             }
@@ -210,10 +215,10 @@ function addListPlayer(list:string, playerEl1:HTMLElement, playerEl2:HTMLElement
     let newListP2:HTMLElement = (listTemplateEl.cloneNode(true) as HTMLElement);
     // set attributes
     (newListP1.querySelector('.player-list-name') as HTMLElement).innerHTML = String(playerEl1.querySelector('.player-name')?.innerHTML);
-    newListP1.setAttribute('id', getListId(playerEl1));
+    newListP1.classList.add(getListId(playerEl1));
     newListP1.setAttribute('value', String(playerEl2.getAttribute('id')));
     (newListP2.querySelector('.player-list-name') as HTMLElement).innerHTML = String(playerEl2.querySelector('.player-name')?.innerHTML);
-    newListP2.setAttribute('id', getListId(playerEl2));
+    newListP2.classList.add(getListId(playerEl2));
     newListP2.setAttribute('value', String(playerEl1.getAttribute('id')));
     // add remove button event
     (newListP1.querySelector('.rm-list-btn') as HTMLElement).addEventListener(
@@ -237,18 +242,29 @@ function dropListPlayer(event:DragEvent) {
     if (sourceId) {
         const playerDragged = (document.getElementById(sourceId) as HTMLElement);
         let trg = (event.target as HTMLElement);
-        if (trg.classList.contains('listbutton')) {
-            const playerDropped = (trg.closest('.player-container-instance') as HTMLElement);
-            if (playerDropped && !playerDropped.isEqualNode(playerDragged)) {
 
-                if (trg.classList.contains('blacklistbutton')) {
-                    // blacklist added
-                    addBlackList(playerDragged, playerDropped);
-                } else if (trg.classList.contains('whitelistbutton')) {
-                    // whitelist added
-                    addWhiteList(playerDragged, playerDropped);
+        if (trg.closest('#players-container') != null) {
+            var addFunction:(player1El:HTMLElement, player2El:HTMLElement) => void;
+            if (trg.closest('.listcontainer') != null) {
+                // dropped in list container
+                if (trg.closest('.listcontainer')?.classList.contains('whitelist-container')) {
+                    addFunction = addWhiteList;
+                } else {
+                    addFunction = addBlackList;
                 }
+            } else if (trg.classList.contains('listbutton')) {
+                // dropped on buttons
+                if (trg.classList.contains('blacklistbutton')) {
+                    addFunction = addBlackList;
+                } else {
+                    addFunction = addWhiteList;
+                }
+            } else {
+                // bad drop
+                return;
             }
+            const playerDropped = (trg.closest('.player-container-instance') as HTMLElement);
+            addFunction(playerDragged, playerDropped)
         }
     }
 }
