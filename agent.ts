@@ -577,3 +577,7 @@ function doSearch() {
     search.start();
     // return multiple solutions, maybe add a solution to the DOM each time a solution is found?
 }
+function bindSearch() {
+    document.getElementById('activate-search-btn')?.addEventListener('click', doSearch);
+}
+bindSearch();

@@ -3,15 +3,15 @@
 }
 
 .power-medium {
-    background-color: rgb(100, 150, 50);
+    background-color: rgb(140, 200, 50);
 }
 
 .power-high {
-    background-color: rgb(200, 200, 50);
+    background-color: rgb(192, 200, 50);
 }
 
 .power-comp {
-    background-color: rgb(200, 100, 50);
+    background-color: rgb(200, 132, 50);
 }
 
 .power-err {
