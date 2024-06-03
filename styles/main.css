@@ -37,6 +37,9 @@
 .player-container-instance {
     background-color: lightgrey;
 }
+.listcontainer-inner {
+    min-height: 2rem;
+}
 
 .listbutton {
     border:none;
