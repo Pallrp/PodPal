@@ -1,4 +1,16 @@
-TODOS:
+# Introduction
+TODO: do introduction
+
+## Setup
+This project develops the javascript code used in the html document using typescript via the typescript compiler.
+
+You can fetch this compiler using npm:
+> npm -g typescript
+
+Compiling the code works as follows:
+> tsc ts/file.ts
+
+# TODOS:
 
     Interactive player list
         A list of all players needs to represent all players that are considered
