@@ -7,8 +7,11 @@ This project develops the javascript code used in the html document using typesc
 You can fetch this compiler using npm:
 > npm -g typescript
 
+Snuffs out errors related to Sets not being valid objects.
+> npm install @types/node --save-dev
+
 Compiling the code works as follows:
-> tsc ts/file.ts
+> tsc ts/file.ts --downleveliteration
 
 # TODOS:
 
