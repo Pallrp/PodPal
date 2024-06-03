@@ -24,3 +24,8 @@
     border: none;
     border-radius: 30%;
 }
+
+#players-added-container {
+    max-height: 20rem;
+    overflow-y: scroll;
+}

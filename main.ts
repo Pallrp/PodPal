@@ -93,6 +93,29 @@ function removePlayer(playerId:string):undefined {
     }
 }
 
+function sortPlayers() {
+    let playerList = playerContainer.children;
+    let playerArray = Array.from(playerList);
+    playerArray = playerArray.sort((a, b) => {
+        let aName = a.querySelector('.player-name')?.innerHTML;
+        let bName = b.querySelector('.player-name')?.innerHTML;
+        if (aName && bName) {
+            aName = aName.trim();
+            bName = bName.trim();
+            return ('' + bName).localeCompare(aName);
+        }
+        return 0;
+    });
+    playerArray.reduce((prev:null|Element, next) => {
+        if (prev == null) {
+            playerContainer.insertBefore(playerContainer.children[0], next)
+        } else {
+            playerContainer.insertBefore(next, prev);
+        }
+        return next;
+    }, null);
+}
+
 function addPlayer(name:string, powerLevel:number) {
     playerCount++;
     let newPlayerEl = (playerTemplateEl.cloneNode(true) as HTMLElement);
@@ -107,7 +130,7 @@ function addPlayer(name:string, powerLevel:number) {
     let powerContainer = (newPlayerEl.querySelector('.player-power-container') as HTMLElement)
     powerContainer.classList.add(levelCls);
     powerContainer.innerHTML = levelName;
-    newPlayerEl.setAttribute('value', String(powerLevel));
+    powerContainer.setAttribute('value', String(powerLevel));
     
     // add remove button functionalities
     newPlayerEl.querySelector('.rm-player-btn')?.addEventListener("click", function (el) {
@@ -116,6 +139,7 @@ function addPlayer(name:string, powerLevel:number) {
 
     // add node to player list
     playerContainer.appendChild(newPlayerEl);
+    sortPlayers();
 }
 
 loadPage();
