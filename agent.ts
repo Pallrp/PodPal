@@ -1,4 +1,5 @@
 const MAXSEATS = 4;
+const MAXSOLUTIONS = 10;
 // id -> Player dictionary for all players
 var PLAYERS:Record<number, Player> = {};
 // TODO: async
@@ -12,43 +13,43 @@ class MinHeap {
     }
  
     // Helper Methods
-    getLeftChildIndex(parentIndex:number) {
+    getLeftChildIndex(parentIndex:number) : number {
         return 2 * parentIndex + 1;
     }
-    getRightChildIndex(parentIndex:number) {
+    getRightChildIndex(parentIndex:number) : number {
         return 2 * parentIndex + 2;
     }
-    getParentIndex(childIndex:number) {
+    getParentIndex(childIndex:number) : number {
         return Math.floor((childIndex - 1) / 2);
     }
-    hasLeftChild(index:number) {
+    hasLeftChild(index:number) : boolean {
         return this.getLeftChildIndex(index) < this.heap.length;
     }
-    hasRightChild(index:number) {
+    hasRightChild(index:number) : boolean {
         return this.getRightChildIndex(index) < this.heap.length;
     }
-    hasParent(index:number) {
+    hasParent(index:number) : boolean {
         return this.getParentIndex(index) >= 0;
     }
-    leftChild(index:number) {
+    leftChild(index:number) : State {
         return this.heap[this.getLeftChildIndex(index)];
     }
-    rightChild(index:number) {
+    rightChild(index:number) : State {
         return this.heap[this.getRightChildIndex(index)];
     }
-    parent(index:number) {
+    parent(index:number) : State {
         return this.heap[this.getParentIndex(index)];
     }
  
     // Functions to create Min Heap
      
-    swap(indexOne:number, indexTwo:number) {
-        const temp = this.heap[indexOne];
+    swap(indexOne:number, indexTwo:number) : undefined {
+        const temp:State= this.heap[indexOne];
         this.heap[indexOne] = this.heap[indexTwo];
         this.heap[indexTwo] = temp;
     }
  
-    peek() {
+    peek() : State|null {
         if (this.heap.length === 0) {
             return null;
         }
@@ -58,7 +59,7 @@ class MinHeap {
     // Removing an element will remove the
     // top element with highest priority then
     // heapifyDown will be called 
-    remove() {
+    remove() : State|null {
         if (this.heap.length === 0) {
             return null;
         }
@@ -69,27 +70,27 @@ class MinHeap {
         return item;
     }
  
-    add(item:State) {
+    add(item:State) : undefined {
         this.heap.push(item);
         this.heapifyUp();
     }
  
-    heapifyUp() {
+    heapifyUp() : undefined {
         let index = this.heap.length - 1;
-        while (this.hasParent(index) && this.parent(index) > this.heap[index]) {
+        while (this.hasParent(index) && this.h.evalState(this.parent(index)) > this.h.evalState(this.heap[index])) {
             this.swap(this.getParentIndex(index), index);
             index = this.getParentIndex(index);
         }
     }
  
-    heapifyDown() {
+    heapifyDown() : undefined {
         let index = 0;
         while (this.hasLeftChild(index)) {
             let smallerChildIndex = this.getLeftChildIndex(index);
-            if (this.hasRightChild(index) && this.rightChild(index) < this.leftChild(index)) {
+            if (this.hasRightChild(index) && this.h.evalState(this.rightChild(index)) < this.h.evalState(this.leftChild(index))) {
                 smallerChildIndex = this.getRightChildIndex(index);
             }
-            if (this.heap[index] < this.heap[smallerChildIndex]) {
+            if (this.h.evalState(this.heap[index]) < this.h.evalState(this.heap[smallerChildIndex])) {
                 break;
             } else {
                 this.swap(index, smallerChildIndex);
@@ -111,11 +112,31 @@ class Heuristic {
     /*
         Score numbers (High = bad)
     */
-    POWERDIFF:number = 25;          // Cost for level higher power that exist if theres a lower power in the pod
+    /*
+        Heuristic guide:
+            powerdiff > empty seat:
+                Pods are preferrably emptier instead of introducing a higher powerlevel to the pod
+            powerdiff > (empty seat) * 2:
+                Pods are heavily discouraged from having a higher powerlevel, a pod of 2 players is better than
+                introducing a higher powerlevel
+            powerdiff < empty seat:
+                Pods are preferrably filled by filling with different powerlevels instead of unfilled pods
+            powerdiff < (empty seat) * 2:
+                Pods are heavily discouraged from being empty, going as far as introducing a much higher powerlevel
+                to fill the 4th spot instead of being empty
+            blacklist < powerdiff * 3:
+                Two blacklisted players are encouraged to play with eachother at the same powerlevel
+                instead of moving one of them to another pod of a different level
+            blacklist > powerdiff * 3:
+                Two blacklisted players are discouraged to be podded, regardless of a power difference
+                they will be moved to a pod with differing powerlevel
+    */
+    POWERDIFF:number = 15;          // Cost for level higher power that exist if theres a lower power in the pod
                                     // Each level higher adds a squared multiplier to this score (1 level diff = 2x, 2 levels diff = 4x)
     WHITELIST:number = 0;           // Cost for Whitelist players are at same table
-    BLACKLIST:number = 100;         // Cost for Blacklisted players are at same table
+    BLACKLIST:number = 80;          // Cost for Blacklisted players are at same table
     EMPTYSEAT:number = 10;          // Cost for each player who hasnt been seated (default cost)
+    // SEAT:number = // Cost for seating a player TODO: do we need this?
 
     maxPlayers:number;
     hashmap:Record<number, number>; // hash: value
@@ -150,57 +171,62 @@ class Heuristic {
         if ((stateHash) in this.hashmap) {
             return this.hashmap[stateHash];
         }
-        // TODO: return "heuristic score" of the state
         var totalScore = 0;
-        var totalSeated = state.totalSeatedPlayers();
-        var player:Player;
-        // add score for total unseated players
-        totalScore += (this.maxPlayers - totalSeated) * this.EMPTYSEAT;
+        // var totalSeated = state.totalSeatedPlayers();
+        var player:Player,
+            tableScore:number,
+            totalDifferingPowers:number,
+            seatsByPower:Record<number, Set<number>>;
         // search for black- & whitelist + differing powerlevels
         for (var table of state.tables) {
-            var tableScore = 0;
-            var seatsByPower:Record<number, Set<number>> = {};
-            var totalDifferingPowers = 0;
-            
-            for (let objPlayerId of table.seats) {
-                player = PLAYERS[objPlayerId[0]];
-                totalDifferingPowers += addValToDictSet(seatsByPower, player.power, player.id);
-                if (player.hasBlacklist()) {
-                    if(table.containsBlackList(player)) {
-                        // add whitelist score
-                        tableScore += this.BLACKLIST;
-                    }
-                }
-                if (player.hasBlacklist()) {
-                    if(table.containsWhitelist(player)) {
-                        // add blacklist score
-                        tableScore += this.WHITELIST;
-                    }
-                }
-            }
-            // check powerlevels
-            if (totalDifferingPowers > 1) {
-                var differingPowers = 0;
-                var powerLevel:string, playerSet:Set<number>;
+            if (table.seats.size > 0) {
+                tableScore = 0;
+                seatsByPower = {};
+                totalDifferingPowers = 0;
+                // add score for each empty seat
+                tableScore += (MAXSEATS - table.seats.size) * this.EMPTYSEAT;
 
-                for ([powerLevel, playerSet] of Object.entries(seatsByPower)) {
-                    // more higher power than lower are preferrable over more lower over higher
-                    // for each player at higher, increment by one 
-                    let PL:number = Number(powerLevel);
-                    if (String(PL + 1) in seatsByPower) {
-                        differingPowers += playerSet.size * 1;
+                for (let objPlayerId of table.seats) {
+                    player = PLAYERS[objPlayerId[0]];
+                    totalDifferingPowers += addValToDictSet(seatsByPower, player.power, player.id);
+                    if (player.hasBlacklist()) {
+                        if(table.containsBlackList(player)) {
+                            // add whitelist score
+                            tableScore += this.BLACKLIST;
+                        }
                     }
-                    if (String(PL + 2) in seatsByPower) {
-                        differingPowers += playerSet.size * 2;
-                    }
-                    if (String(PL + 3) in seatsByPower) {
-                        differingPowers += playerSet.size * 4;
+                    if (player.hasBlacklist()) {
+                        if(table.containsWhitelist(player)) {
+                            // add blacklist score
+                            tableScore += this.WHITELIST;
+                        }
                     }
                 }
-                tableScore += differingPowers * this.POWERDIFF;
+                // check powerlevels
+                if (totalDifferingPowers > 1) {
+                    var differingPowers = 0;
+                    var powerLevel:string, playerSet:Set<number>;
+                    
+                    for ([powerLevel, playerSet] of Object.entries(seatsByPower)) {
+                        // more higher power than lower are preferrable over more lower over higher
+                        // for each player at higher, increment by one 
+                        let PL:number = Number(powerLevel);
+                        if (String(PL + 1) in seatsByPower) {
+                            differingPowers += playerSet.size * 1;
+                        }
+                        if (String(PL + 2) in seatsByPower) {
+                            differingPowers += playerSet.size * 2;
+                        }
+                        if (String(PL + 3) in seatsByPower) {
+                            differingPowers += playerSet.size * 4;
+                        }
+                    }
+                    tableScore += differingPowers * this.POWERDIFF;
+                }
+                totalScore += tableScore;
             }
-            totalScore += tableScore;
         }
+        this.hashmap[stateHash] = totalScore;
         return totalScore;
     }
     
@@ -259,11 +285,13 @@ class State {
     prevState:State|null;
     tables:Array<Table>;
     playersLeft:Set<number>;
+    hashValue:number;
     // a possible assignment of variables of course
     constructor(prevState:State|null, tables:Array<Table>, playersLeft:Set<number>|Array<number>) {
         this.prevState = prevState;
         this.tables = [];
         this.playersLeft = new Set(playersLeft);
+        this.hashValue = 0;
         Array.prototype.forEach((table) => {this.tables.push(table.copy())}, tables);
     }
 
@@ -276,9 +304,34 @@ class State {
     nextState(playerId:number, toTable:number) : State {
         let stateCpy = this.copy();
         stateCpy.tables[toTable].seatPlayer(playerId);
+        stateCpy.playersLeft.delete(playerId);
+        stateCpy.prevState = this;
         return stateCpy;
     }
+    /*
+        Sum of all players Ids for ordering tables
+    */
+    seatSum(table:Table) : number {
+        return Array.from(table.seats).reduce((prev, curr) => {return prev + curr}, 0)
+    }
+    
+    /*
+        Returns a hash of this state.
+        State hashes do not care for the table order, a state with two tables of the order
+        [(p1, p2, p3), (p4, p5, p6)]
+        should contain the same hash as another state with the same players:
+        [(p4, p5, p6), (p1, p2, p3)]
+
+        NOTE: the sum of player ids on each table are currently being used to sort players
+            this may give a random ordering of tables since a permutation of seated players exist
+            that give an equal sum of a different ordering. Thus this method is not perfect unless
+            a more unique ordering of playerXtables is given.
+        TODO: fix note above
+    */
     hash() : number {
+        if (this.hashValue !== 0) {
+            return this.hashValue;
+        }
         // do I need this?.. yes
         // OC (https://stackoverflow.com/questions/7616461/generate-a-hash-from-string-in-javascript)
         // donut steel
@@ -286,21 +339,17 @@ class State {
         // basically change the whole id list of seats to strings and hash the strings
         var str = "";
         let table:Table;
-        for (table of this.tables) {
+        
+
+        for (table of Array.from(this.tables).sort((a, b) => {return this.seatSum(a) - this.seatSum(b)})) {
             // sets shouldnt change order, so ordering doesnt matter 
             for (let player of table.seats.entries()) {
                 str += String(player[0]) + "-";
             }
         }
-        var hash = 0,
-            i:number, chr:number;
-        if (str.length === 0) return hash;
-        for (i = 0; i < str.length; i++) {
-            chr = str.charCodeAt(i);
-            hash = ((hash << 5) - hash) + chr;
-            hash |= 0; // Convert to 32bit integer
-        }
-        return hash;
+        
+        this.hashValue = hashString(str);
+        return this.hashValue;
     }
 
 }
@@ -309,43 +358,70 @@ class SearchAgent {
     heuristic:Heuristic
     env:Environment
     unsortedPlayers:Set<number>
-    constructor(heuristic:Heuristic, environment:Environment) {
+    frontier:MinHeap;
+    maxSolutions:number;
+    solutions:Set<State>;
+    constructor(heuristic:Heuristic, environment:Environment, maxSolutions) {
         this.heuristic = heuristic;
         this.env = environment;
+        this.solutions = new Set();
+        this.maxSolutions = maxSolutions;
+
         this.unsortedPlayers = new Set();
-        environment.playersList.map((player) => {this.unsortedPlayers.add(player.id)});
+        this.env.playersList.map((player) => {this.unsortedPlayers.add(player.id)});
     }
 
-    recursiveSearch(previousState:State) {
-        if (this.env.isGoalState(previousState)) {    
-            return previousState;
-        }
+    search() {
 
-        var bestAction:number|null = null;
+        var bestAction:State|null = null;
         var bestScore:number = Infinity;
-        var frontier:Array<State> = [];
-        // choose which player to order first
-        var player:Player|null = this.heuristic.evalPlayer(this.unsortedPlayers);
-        // when player has been chosen, choose which table to sit him at
-        if (player !== null) {
-            let actions = this.env.legalActions(previousState, player);
-            for (let action in actions) {
-                let score = this.heuristic.evalState(player, action);
-                if (score == bestScore) {
-                    bestAction = action
+        var exploredStates = new Set();
+        var stateScore:number,
+            currentState:State,
+            currentPlayer:Player,
+            actions:Array<Table>;
+        
+        while (this.frontier.peek() !== null) {
+            // take out cheapest state known
+            currentState = (this.frontier.remove() as State);
+            if (this.env.isGoalState(currentState)) {
+                // state has all players sorted, check if we've beat the record
+                stateScore = this.heuristic.evalState(currentState)
+                if (bestScore > stateScore) {
+                    bestScore = stateScore;
+                    bestAction = currentState;
                 }
             }
-        }
-        // pick best value first, recursively check deeper until all are assigned
-        // save results
-        // then check if theres a better option
-        // hash table?
+            // add state to explored
+            exploredStates.add(currentState.hash());
+            // get next player to sort
+            currentPlayer = (this.heuristic.evalPlayer(currentState.playersLeft) as Player);
+            // add possible continuations to frontier
+            actions = this.env.legalActions(currentState, currentPlayer);
+            for (let action of actions) {
+                let nextState = currentState.nextState(currentPlayer.id, action.id);
+                if (!(nextState.hash() in exploredStates)) {
+                    
+                    stateScore = this.heuristic.evalState(nextState);
+                    if (stateScore <= this.heuristic.evalState((this.frontier.peek() as State))) {
+                        // Only add state to frontier if it ties or beats the best score
+                        this.frontier.add(nextState);
+                    }
+                }
 
+            }
+        }
+    }
+
+    initializeFrontier(initialState:State) : undefined {
+        this.frontier = new MinHeap(this.heuristic);
+        this.frontier.add(initialState);
     }
 
     start() {
         let initialState:State = this.env.getInitialState();
-        this.recursiveSearch(initialState);
+        this.initializeFrontier(initialState);
+        this.search();
     }
 }
 
@@ -412,6 +488,7 @@ class Player {
     power:number
     whitelist:Set<number>
     blacklist:Set<number>
+    hashValue:number
 
     constructor(id:number, name:string, power:number) {
         this.id = id;
@@ -419,14 +496,15 @@ class Player {
         this.power = power;
         this.whitelist = new Set();
         this.blacklist = new Set();
+        this.hashValue = hashString(this.name);
     }
     /* Sets the whitelist variable as the set or iterable */
-    setWhitelist(whitelist) {
+    setWhitelist(whitelist:Set<number>) {
         this.whitelist = whitelist;
     }
 
     /* Sets the blacklist variable as the set or iterable */
-    setBlacklist(blacklist) {
+    setBlacklist(blacklist:Set<number>) {
         this.blacklist = blacklist;
     }
 
@@ -435,6 +513,9 @@ class Player {
     }
     hasBlacklist():boolean {
         return this.blacklist.size > 0;
+    }
+    hash() : number{
+        return this.hashValue;
     }
 }
 /* Returns a list of all added players, instantiated in a list of Player classes */
@@ -458,6 +539,17 @@ function collectPlayers():Array<Player> {
     return playersList;
 }
 // HELPER FUNCTIONS
+function hashString(str:string) : number {
+    var hash = 0,
+    i:number, chr:number;
+    if (str.length === 0) return hash;
+    for (i = 0; i < str.length; i++) {
+        chr = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + chr;
+        hash |= 0; // Convert to 32bit integer
+    }
+    return hash;
+}
 /*
     Adds a value to a dict's value set, if key does not exist, create a new set
     Returns 1 if a new set was created within the record 
@@ -475,7 +567,7 @@ function addValToDictSet(dictObj:Record<number, Set<number>>, key:number, value:
 function doSearch() {
     let players = collectPlayers();
     let env = new Environment(players);
-    let search = new SearchAgent(new Heuristic(players.length), env);
+    let search = new SearchAgent(new Heuristic(players.length), env, MAXSOLUTIONS);
     search.start();
     // return multiple solutions, maybe add a solution to the DOM each time a solution is found?
 }
