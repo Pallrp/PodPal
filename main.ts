@@ -1,4 +1,4 @@
-function loadPage() {
+function loadPage() : undefined {
     addPlayer("Maximus Timmy", Powerlevel.CASUAL);
     addPlayer("Bruhman Lower", Powerlevel.MEDIUM);
     addPlayer("John Doe", Powerlevel.MEDIUM);
