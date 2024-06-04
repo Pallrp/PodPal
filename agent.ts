@@ -153,7 +153,7 @@ class Heuristic {
     POWERDIFF:number = 25;          // Cost for level higher power that exist if theres a lower power in the pod
                                     // Each level higher adds a squared multiplier to this score (1 level diff = 2x, 2 levels diff = 4x)
     WHITELIST:number = 0;           // Cost for Whitelist players are at same table
-    BLACKLIST:number = 80;          // Cost for Blacklisted players are at same table
+    BLACKLIST:number = 200;          // Cost for Blacklisted players are at same table
     EMPTYSEAT:number = 10;          // Cost for each player who hasnt been seated (default cost)
     // SEAT:number = // Cost for seating a player TODO: do we need this?
 
@@ -165,6 +165,10 @@ class Heuristic {
     }
 
     evalPlayer(playersSet:Set<number>) : Player|null {
+        if (playersSet.size == 0) {
+            return null;
+        }
+        return PLAYERS[Array.from(playersSet)[Math.floor(Math.random()*playersSet.size)]];
         // TODO: pick player with estimated least branching paths
         var setLength:number = playersSet.size;
         var i:number = 1;
@@ -551,10 +555,10 @@ function getList(listtype:string, playerEl:Element) : Array<number>{
     var returnArr:Array<number> = [];
     if (nodeList) {
         for (let i = 0; i < nodeList.children.length; i++) {
-            let playerListId:string|null = nodeList.children[i].getAttribute('value');
+            let playerListId:string = nodeList.children[i].classList[0];
             if (playerListId !== null) {
                 returnArr.push(
-                    Number(String(playerListId).split("-")[1])
+                    Number(String(playerListId).split("-")[2])
                 );
             }
         }
