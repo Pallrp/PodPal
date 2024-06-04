@@ -230,14 +230,50 @@ function addListPlayer(list:string, playerEl1:HTMLElement, playerEl2:HTMLElement
     newListP2.setAttribute('value', String(playerEl1.getAttribute('id')));
     // add remove button event
     (newListP1.querySelector('.rm-list-btn') as HTMLElement).addEventListener(
-        'click', (ev) => {newListP1.remove(); newListP2.remove();}
+        'click', (ev) => {removeListPlayer(list, playerEl1, newListP1, playerEl2, newListP2);}
     );
     (newListP2.querySelector('.rm-list-btn') as HTMLElement).addEventListener(
-        'click', (ev) => {newListP1.remove(); newListP2.remove();}
+        'click', (ev) => {removeListPlayer(list, playerEl1, newListP1, playerEl2, newListP2);}
     );
     // add to eachother list
     playerEl1.querySelector(list)?.appendChild(newListP2);
     playerEl2.querySelector(list)?.appendChild(newListP1);
+    // increment counters
+    let listbutton1 = (playerEl1.querySelector(list+'button') as HTMLElement);
+    let listbutton2 = (playerEl2.querySelector(list+'button') as HTMLElement);
+    for (let listbtn of Array.from([listbutton1, listbutton2])) {
+        let listHTML:string = listbtn.innerHTML;
+        let listNum:string|undefined,
+            listStr:string;
+        [listStr, listNum] = listHTML.split(":");
+        if (listNum === undefined) {
+            listNum = "0";
+        }
+        listHTML = listStr + ":" + String(Number(listNum) + 1);
+        listbtn.innerHTML = listHTML;
+    }
+}
+
+function removeListPlayer(list:string, pEl1:HTMLElement, pListEl1:HTMLElement, pEl2:HTMLElement, pListEl2:HTMLElement){
+    pListEl1.remove();
+    pListEl2.remove();
+    // decrement button counter
+    
+    let listbutton1 = (pEl1.querySelector(list+'button') as HTMLElement);
+    let listbutton2 = (pEl2.querySelector(list+'button') as HTMLElement);
+    for (let listbtn of Array.from([listbutton1, listbutton2])) {
+        let listHTML:string = listbtn.innerHTML;
+        let listNum:string|undefined,
+            listStr:string;
+        [listStr, listNum] = listHTML.split(":");
+        listNum = String(Number(listNum) - 1);
+        if (listNum === "0") {
+            listHTML = listStr;
+        } else {
+            listHTML = listStr + ":" + listNum;
+        }
+        listbtn.innerHTML = listHTML;
+    }
 }
 
 function toggleListVisibility(listEl:HTMLElement) {
@@ -282,12 +318,14 @@ function dragListPlayer(event:DragEvent) {
 }
 
 var Solutions:Array<Array<Array<number>>> = [];
-function newSolution(seatings:Array<Array<number>>) {
+var solutionScores:Array<number> = [];
+function newSolution(seatings:Array<Array<number>>, score:number) {
     Solutions.push(seatings);
+    solutionScores.push(score);
     let i:number = Solutions.length - 1;
     let newButton:HTMLElement = (solutionButton.cloneNode(true) as HTMLElement);
     newButton.setAttribute('id', String(i));
-    newButton.innerHTML += String(i + 1);
+    newButton.innerHTML += String(i + 1) + "- score: " + String(score);
     newButton.addEventListener('click', (ev) => {stageSolution(i)});
     solutionsList.appendChild(newButton);
     if (solutionStage.innerHTML === "") {
@@ -297,7 +335,7 @@ function newSolution(seatings:Array<Array<number>>) {
 }
 
 function stageSolution(solutionIndex:number) {
-    stagedSolutionTitleEl.innerHTML = "Solution #" + String(solutionIndex + 1);
+    stagedSolutionTitleEl.innerHTML = "Solution #" + String(solutionIndex + 1) + "- score: " + solutionScores[solutionIndex];
     solutionStage.innerHTML = "";
     for (let tableArray of Solutions[solutionIndex]) {
         if (tableArray.length === 0) {
@@ -336,6 +374,7 @@ function resetSolutions() {
     solutionsList.innerHTML = ""; // clean solution buttons
     stagedSolutionTitleEl.innerHTML = ""; // clean solution number title
     Solutions = []; // clear cached solutions
+    solutionScores = [];
 }
 
 function bindSearch() {

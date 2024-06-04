@@ -21,18 +21,19 @@ class MinHeap<T> {
     }
     orderedArrHelper(index:number, outArray:Array<T>) : void {
         outArray.push(this.heap[index]);
-        if (this.hasLeftChild(index)) {
-            this.orderedArrHelper(this.getLeftChildIndex(index), outArray);
-        }
         if (this.hasRightChild(index)) {
             this.orderedArrHelper(this.getRightChildIndex(index), outArray);
+        }
+        if (this.hasLeftChild(index)) {
+            this.orderedArrHelper(this.getLeftChildIndex(index), outArray);
         }
     }
 
     getOrderedArray() : Array<T>{
-        let arr = [];
-        if (this.heap.length > 0) {
-            this.orderedArrHelper(0, arr);
+        let arr:Array<T> = [];
+        let clone:MinHeap<T> = this.copy();
+        while (clone.heap.length) {
+            arr.push((clone.remove() as T));
         }
         return arr;
     }
@@ -150,10 +151,10 @@ class Heuristic {
                 Two blacklisted players are discouraged to be podded, regardless of a power difference
                 they will be moved to a pod with differing powerlevel
     */
-    POWERDIFF:number = 25;          // Cost for level higher power that exist if theres a lower power in the pod
+    POWERDIFF:number = 15;          // Cost for level higher power that exist if theres a lower power in the pod
                                     // Each level higher adds a squared multiplier to this score (1 level diff = 2x, 2 levels diff = 4x)
-    WHITELIST:number = 0;           // Cost for Whitelist players are at same table
-    BLACKLIST:number = 200;          // Cost for Blacklisted players are at same table
+    WHITELIST:number = -25;           // Cost for Whitelist players are at same table
+    BLACKLIST:number = 100;          // Cost for Blacklisted players are at same table
     EMPTYSEAT:number = 10;          // Cost for each player who hasnt been seated (default cost)
     // SEAT:number = // Cost for seating a player TODO: do we need this?
 
@@ -218,7 +219,7 @@ class Heuristic {
                             tableScore += this.BLACKLIST;
                         }
                     }
-                    if (player.hasBlacklist()) {
+                    if (player.hasWhitelist()) {
                         if(table.containsWhitelist(player)) {
                             // add blacklist score
                             tableScore += this.WHITELIST;
@@ -352,20 +353,20 @@ class State {
             return this.hashValue;
         }
         // do I need this?.. yes
-        // OC (https://stackoverflow.com/questions/7616461/generate-a-hash-from-string-in-javascript)
-        // donut steel
 
         // basically change the whole id list of seats to strings and hash the strings
         var tablestrings:Array<string> = [];
         for (let table of this.tables) {
-            // sets shouldnt change order, so ordering doesnt matter 
-            let substr = "(";
-            for (let seat of table.seats.getOrderedArray()) {
-                substr += seat + ",";
+            if (table.seats.heap.length > 0) {
+                // sets shouldnt change order, so ordering doesnt matter 
+                let substr = "(";
+                for (let seat of table.seats.getOrderedArray()) {
+                    substr += seat + ",";
+                }
+                tablestrings.push(substr += ")");
             }
-            tablestrings.push(substr += ")");
         }
-        let sortedNames = tablestrings.sort().reduce((prev, curr) => {return prev + curr}, "")
+        let sortedNames = tablestrings.sort().reduce((prev, curr) => {return prev + "-" + curr}, "")
         this.hashValue = hashString(sortedNames);
         return this.hashValue;
     }
@@ -405,7 +406,8 @@ class SearchAgent {
         // TODO: maybe add a callback here, usable in frontend?
         console.log("Solution found");
         this.solutions.add(state);
-        newSolution(state.getSeats());
+        console.log(state.hash());
+        newSolution(state.getSeats(), this.heuristic.evalState(state));
     }
 
     search() {
@@ -422,18 +424,19 @@ class SearchAgent {
             // take out cheapest state known
             currentState = (this.frontier.remove() as State);
 
-            if (this.env.isGoalState(currentState) && !(currentState.hash() in exploredStates)) {
+            if (this.env.isGoalState(currentState) && !(exploredStates.has(currentState.hash()))) {
                 // state has all players sorted, check if we've beat the record
                 stateScore = this.heuristic.evalState(currentState);
                 if (bestScore >= stateScore) {
                     bestScore = stateScore;
                     bestAction = currentState;
                     this.addSolution(currentState);
+                    exploredStates.add(currentState.hash());
                 }
                 if (this.solutions.size >= this.maxSolutions) {
                     return;
                 }
-            } else if (!(currentState.hash() in exploredStates)) {
+            } else if (!(exploredStates.has(currentState.hash()))) {
                 // add state to explored
                 exploredStates.add(currentState.hash());
                 // get next player to sort
@@ -442,7 +445,7 @@ class SearchAgent {
                 actions = this.env.legalActions(currentState, currentPlayer);
                 for (let action of actions) {
                     let nextState = currentState.nextState(currentPlayer.id, action.id);
-                    if (!(nextState.hash() in exploredStates)) {
+                    if (!(exploredStates.has(nextState.hash()))) {
                         //stateScore = this.heuristic.evalState(nextState);
                         // Add all states
                         this.frontier.add(nextState);
@@ -488,24 +491,25 @@ class Table {
         return this.seats.size() >= MAXSEATS;
     }
 
-    containsBlackList(player:Player) {
-        for (let blacklistedPlayer of player.blacklist) {
-            let playerId:number = blacklistedPlayer;
-            if (playerId in this.seats) {
-                return true;
+    containsList(player:Player, listAttr:string) : boolean {
+        for (let listedPlayer of player[listAttr]) {
+            let playerId:number = listedPlayer;
+            for (let player of this.seats.getOrderedArray()) {
+                let playerId2:number = Number(player)
+                if (playerId == playerId2) {
+                    return true;
+                }
             }
         }
         return false;
     }
+
+    containsBlackList(player:Player) {
+        return this.containsList(player, "blacklist");
+    }
     
     containsWhitelist(player:Player) {
-        for (let whitelistedPlayer of player.whitelist) {
-            let playerId:number = whitelistedPlayer;
-            if (playerId in this.seats) {
-                return true;
-            }
-        }
-        return false;
+        return this.containsList(player, "whitelist");
     }
     
     seatedPlayers() {
@@ -575,11 +579,11 @@ function collectPlayers():Array<Player> {
             (elem.getAttribute("id") as string).split("-")[1]
         );
         let name:string = (elem.querySelector('.player-name') as HTMLElement).innerHTML.trim();
-        let power:number = Number(elem.getAttribute("value") as string);
+        let power:number = Number(elem.querySelector(".player-power-container")?.getAttribute("value") as string);
         let newP = new Player(id, name, power);
         // TODO: add whitelist
         newP.setBlacklist(new Set(getList("blacklist", elem)));
-        newP.setBlacklist(new Set(getList("whitelist", elem)));
+        newP.setWhitelist(new Set(getList("whitelist", elem)));
         //newP.setWhitelist(stuff);
         // TODO: add blacklist
         //newP.setBlacklist(stuff);
@@ -597,6 +601,8 @@ function playernameSort(a:number, b:number) :number {
     return 0;
 }
 
+// OC (https://stackoverflow.com/questions/7616461/generate-a-hash-from-string-in-javascript)
+// donut steel
 function hashString(str:string) : number {
     var hash = 0,
     i:number, chr:number;
