@@ -10,7 +10,7 @@ const solutionsList = (document.getElementById('solutions-area') as HTMLElement)
 const solutionButton = (document.getElementById('solution-button-template') as HTMLElement);
 const stagedSolutionTitleEl = (document.getElementById('solution-number') as HTMLElement);
 const loadingSpinner = (document.getElementById('loading-spinner') as HTMLElement);
-const searchBtn = (document.getElementById('activate-search-btn') as HTMLElement);
+const searchBtns = (document.getElementsByClassName('search-btn') as HTMLCollection);
 var playerCount = 0;
 
 function loadPage() : void {
@@ -20,13 +20,21 @@ function loadPage() : void {
     addPlayer("Actual Brainrot", Powerlevel.MEDIUM);
     addPlayer("Bruhman Lower", Powerlevel.MEDIUM);
     addPlayer("Chad.", Powerlevel.COMP);
+    addPlayer("Flip", Powerlevel.COMP);
+    addPlayer("Chud", Powerlevel.COMP);
     addPlayer("John Doe", Powerlevel.MEDIUM);
+    addPlayer("John Die", Powerlevel.MEDIUM);
+    addPlayer("John Deo", Powerlevel.MEDIUM);
+    addPlayer("John Don", Powerlevel.MEDIUM);
+    addPlayer("Average Player (Derogatory)", Powerlevel.MEDIUM);
     addPlayer("John Rizzman", Powerlevel.COMP);
     addPlayer("Maximus Timmy", Powerlevel.CASUAL);
     addPlayer("Scrat", Powerlevel.HIGH);
     addPlayer("Scrut", Powerlevel.HIGH);
     addPlayer("Skibidi", Powerlevel.HIGH);
     addPlayer("Zoomer Zubar", Powerlevel.CASUAL);
+    addPlayer("Casual", Powerlevel.CASUAL);
+    addPlayer("Filthy Casual", Powerlevel.CASUAL);
 }
 
 function clearForm(formId:string) : void {
@@ -341,7 +349,7 @@ function newSolution(seatings:Array<Array<number>>, score:number) : void {
     let i:number = Solutions.length - 1;
     let newButton:HTMLElement = (solutionButton.cloneNode(true) as HTMLElement);
     newButton.setAttribute('id', String(i));
-    newButton.innerHTML += String(i + 1) + "- score: " + String(score);
+    newButton.innerHTML += String(i + 1) + " - score: " + String(score);
     newButton.addEventListener('click', (ev) => {stageSolution(i)});
     solutionsList.appendChild(newButton);
     if (solutionStage.innerHTML === "") {
@@ -371,7 +379,7 @@ function dropStagedPlayer(event:DragEvent) : void {
 }
 
 function stageSolution(solutionIndex:number) : void {
-    stagedSolutionTitleEl.innerHTML = "Solution #" + String(solutionIndex + 1) + "- score: " + solutionScores[solutionIndex];
+    stagedSolutionTitleEl.innerHTML = "Solution #" + String(solutionIndex + 1) + " - score: " + solutionScores[solutionIndex];
     solutionStage.innerHTML = "";
     let tempId = 0;
     for (let tableArray of Solutions[solutionIndex]) {
@@ -427,20 +435,25 @@ function resetSolutions() : void {
 
 function toggleLoad() : void {
     loadingSpinner.classList.toggle('d-none');
-    searchBtn.classList.toggle('d-none');
+    for (let i = 0; i < searchBtns.length; i++) {
+        searchBtns[i].classList.toggle('d-none');
+    }
 }
 
 function bindSearch() : void {
-    document.getElementById('activate-search-btn')?.addEventListener('click', () => {
-        newSearch();        
+    document.getElementById('activate-search-agent')?.addEventListener('click', () => {
+        newSearch("astar");        
     });
+    document.getElementById('activate-random-agent')?.addEventListener('click', () => {
+        newSearch("random");
+    })
 }
 
-function newSearch() : void {
+function newSearch(agent:string) : void {
     toggleLoad();
     resetSolutions(); // reset before search
     setTimeout(() => {
-        doSearch();
+        doSearch(agent);
         toggleLoad();
     }, 10);
 }

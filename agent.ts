@@ -262,7 +262,7 @@ class Environment {
     tables:Array<Table>;
 
     constructor(players:Array<Player>) {
-        this.maxTables = Math.round(players.length / 2);
+        this.maxTables = Math.round(players.length / 3);
         this.constructTables();
         this.loadPlayersToGlobal(players);
         this.playersList = players;
@@ -385,14 +385,15 @@ class State {
     }
 }
 
-class SearchAgent {
+class Agent {
+    
     heuristic:Heuristic
     env:Environment
     unsortedPlayers:Set<number>
     frontier:MinHeap<State>;
     maxSolutions:number;
     solutions:Set<State>;
-    constructor(heuristic:Heuristic, environment:Environment, maxSolutions) {
+    constructor(heuristic:Heuristic, environment:Environment, maxSolutions:number) {
         this.heuristic = heuristic;
         this.env = environment;
         this.solutions = new Set();
@@ -408,10 +409,44 @@ class SearchAgent {
         this.solutions.add(state);
         newSolution(state.getSeats(), this.heuristic.evalState(state));
     }
+    search() {
+        throw Error("Base Agent does not implement a search() method");
+    }
+
+    initializeFrontier(initialState:State) : undefined {
+        this.frontier = new MinHeap((a) => {return this.heuristic.evalState(a)});
+        this.frontier.add(initialState);
+    }
+
+    start() {
+        let initialState:State = this.env.getInitialState();
+        this.initializeFrontier(initialState);
+        this.search();
+    }
+}
+
+class RandomAgent extends Agent {
+    search() {
+        var playersLeft = new Set(this.unsortedPlayers);
+        var theState = this.frontier.remove();
+        while (playersLeft.size > 0) {
+            var player = this.heuristic.evalPlayer(playersLeft);
+            if (theState != null && player != null) {
+                let actions = this.env.legalActions(theState, player);
+                let action:Table = actions[Math.floor(Math.random() * actions.length)];
+                theState = theState.nextState(player.id, action.id);
+                playersLeft.delete(player.id);
+            }
+        }
+        if (theState != null) {
+            this.addSolution(theState);
+        }
+    }
+}
+
+class AStarAgent extends Agent {
 
     search() {
-
-        var bestAction:State|null = null;
         var bestScore:number = Infinity;
         var exploredStates = new Set();
         var stateScore:number,
@@ -428,7 +463,6 @@ class SearchAgent {
                 stateScore = this.heuristic.evalState(currentState);
                 if (bestScore >= stateScore) {
                     bestScore = stateScore;
-                    bestAction = currentState;
                     this.addSolution(currentState);
                     exploredStates.add(currentState.hash());
                 }
@@ -449,21 +483,9 @@ class SearchAgent {
                         // Add all states
                         this.frontier.add(nextState);
                     }
-                    
                 }
             }
         }
-    }
-
-    initializeFrontier(initialState:State) : undefined {
-        this.frontier = new MinHeap((a) => {return this.heuristic.evalState(a)});
-        this.frontier.add(initialState);
-    }
-
-    start() {
-        let initialState:State = this.env.getInitialState();
-        this.initializeFrontier(initialState);
-        this.search();
     }
 }
 
@@ -627,10 +649,17 @@ function addValToDictSet(dictObj:Record<number, Set<number>>, key:number, value:
     return added;
 }
 // MAIN FUNCTION
-function doSearch() {
+function doSearch(agentType:string) {
     let players = collectPlayers();
     let env = new Environment(players);
-    let agent = new SearchAgent(new Heuristic(players.length), env, MAXSOLUTIONS);
+    let agent:Agent;
+    if (agentType == "astar") {
+        agent = new AStarAgent(new Heuristic(players.length), env, MAXSOLUTIONS);
+    } else if (agentType == "random") {
+        agent = new RandomAgent(new Heuristic(players.length), env, MAXSOLUTIONS);
+    } else {
+        throw Error("No agent type selected");
+    }
     agent.start();
     console.log(agent.solutions.size + " solutions found");
     // return multiple solutions, maybe add a solution to the DOM each time a solution is found?
