@@ -1,16 +1,18 @@
+///<reference path="agent.ts"/>
+
 function loadPage() : undefined {
     addPowerSelections();
     addButtonEvents();
-    addPlayer("Maximus Timmy", Powerlevel.CASUAL);
-    addPlayer("Zoomer Zubar", Powerlevel.CASUAL);
-    addPlayer("Bruhman Lower", Powerlevel.MEDIUM);
     addPlayer("Actual Brainrot", Powerlevel.MEDIUM);
+    addPlayer("Bruhman Lower", Powerlevel.MEDIUM);
+    addPlayer("Chad.", Powerlevel.COMP);
+    addPlayer("John Doe", Powerlevel.MEDIUM);
+    addPlayer("John Rizzman", Powerlevel.COMP);
+    addPlayer("Maximus Timmy", Powerlevel.CASUAL);
     addPlayer("Scrat", Powerlevel.HIGH);
     addPlayer("Scrut", Powerlevel.HIGH);
     addPlayer("Skibidi", Powerlevel.HIGH);
-    addPlayer("John Doe", Powerlevel.MEDIUM);
-    addPlayer("John Rizzman", Powerlevel.COMP);
-    addPlayer("Chad.", Powerlevel.COMP);
+    addPlayer("Zoomer Zubar", Powerlevel.CASUAL);
 }
 
 function clearForm(formId:string) {
@@ -58,6 +60,12 @@ function addPowerSelections() {
 const playerTemplateEl = (document.getElementById('player-container-template') as HTMLElement);
 const playerContainer = (document.getElementById('players-container') as HTMLElement);
 const listTemplateEl = (document.getElementById('list-template') as HTMLElement);
+const solutionTableTemplate = (document.getElementById('solution-table-template') as HTMLElement);
+const solutionSeatTemplate = (document.getElementById('solution-seat-template') as HTMLElement);
+const solutionStage = (document.getElementById('staged-solution') as HTMLElement);
+const solutionsList = (document.getElementById('solutions-area') as HTMLElement);
+const solutionButton = (document.getElementById('solution-button-template') as HTMLElement);
+const stagedSolutionTitleEl = (document.getElementById('solution-number') as HTMLElement);
 var playerCount = 0;
 
 const Powerlevel = {
@@ -272,5 +280,71 @@ function dropListPlayer(event:DragEvent) {
 function dragListPlayer(event:DragEvent) {
     event.dataTransfer?.setData("text/plain", (event.target as HTMLElement).id);
 }
+
+var Solutions:Array<Array<Array<number>>> = [];
+function newSolution(seatings:Array<Array<number>>) {
+    Solutions.push(seatings);
+    let i:number = Solutions.length - 1;
+    let newButton:HTMLElement = (solutionButton.cloneNode(true) as HTMLElement);
+    newButton.setAttribute('id', String(i));
+    newButton.innerHTML += String(i + 1);
+    newButton.addEventListener('click', (ev) => {stageSolution(i)});
+    solutionsList.appendChild(newButton);
+    if (solutionStage.innerHTML === "") {
+        stageSolution(i);
+    }
+
+}
+
+function stageSolution(solutionIndex:number) {
+    stagedSolutionTitleEl.innerHTML = "Solution #" + String(solutionIndex + 1);
+    solutionStage.innerHTML = "";
+    for (let tableArray of Solutions[solutionIndex]) {
+        if (tableArray.length === 0) {
+            continue;
+        }
+        let newSolutionTable:HTMLElement = (solutionTableTemplate.cloneNode(true) as HTMLElement);
+        newSolutionTable.removeAttribute('id');
+        solutionStage.appendChild(newSolutionTable);
+
+        for (let seat of tableArray) {
+            let newSolutionSeat:HTMLElement = (solutionSeatTemplate.cloneNode(true) as HTMLElement);
+            newSolutionSeat.removeAttribute('id');
+            let playerEl = (document.getElementById('player-' + String(seat)) as HTMLElement);
+            let playerName:string;
+            if (playerEl) {
+                playerName = String(playerEl.querySelector('.player-name')?.innerHTML);
+            } else {
+                playerName = "Error";
+            }
+            let seatNameEl = newSolutionSeat.querySelector('.solution-name')
+            if (seatNameEl) {
+                seatNameEl.innerHTML = playerName;
+            }
+            // get powerlevel
+            let playerPower = (playerEl.querySelector('.player-power-container') as HTMLElement).getAttribute("value");
+            newSolutionSeat.classList.add(
+                getPowerClass(Number(playerPower))
+            );
+            newSolutionTable.querySelector('.solution-seats-container')?.appendChild(newSolutionSeat);
+        }
+    }
+}
+
+function resetSolutions() {
+    solutionStage.innerHTML = ""; // clean staged solution
+    solutionsList.innerHTML = ""; // clean solution buttons
+    stagedSolutionTitleEl.innerHTML = ""; // clean solution number title
+    Solutions = []; // clear cached solutions
+}
+
+function bindSearch() {
+    document.getElementById('activate-search-btn')?.addEventListener('click', () => {
+        // TODO: add loading thingy?
+        resetSolutions(); // reset before search
+        doSearch();
+    });
+}
+bindSearch();
 
 loadPage();

@@ -11,7 +11,7 @@ Snuffs out errors related to Sets not being valid objects.
 > npm install @types/node --save-dev
 
 Compiling the code works as follows:
-> tsc ts/file.ts --downleveliteration
+> tsc -m es2020 --downlevelIteration --skipLibCheck ts/file.ts
 
 # TODOS:
 

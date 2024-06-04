@@ -82,11 +82,32 @@
                     <button type="button" id="activate-search-btn">Shuffle</button>
                 </div>
                 <div class="row">
-                    <div class="col">there</div>
-                    <div class="col">where</div>
+                    <div class="col-10">
+                        <h3 id="solution-number"></h3>
+                        <div id="staged-solution" class="row">
+                        </div>
+                    </div>
+                    <div class="col-2">
+                        <div id="solutions-area" class="solutions-area">
+                        </div>
+                    </div>
+                </div>
+                <div class="d-none">
+                    <div id="solution-table-template" class="col-3 m-1">
+                        <div class="solution-seats-container">
+                        </div>
+                    </div>
+                    <div id="solution-seat-template" class="solution-seat">
+                        <span class="solution-name">bruh</span>
+                    </div>
+                    
+                    <button id="solution-button-template" class="row solution" type="button">
+                        Solution #
+                    </button>
                 </div>
             </div>
         </div>
         <script src="main.js"></script>
+        <script src="agent.js"></script>
     </body>
 </html>
