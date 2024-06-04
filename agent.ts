@@ -406,7 +406,6 @@ class SearchAgent {
         // TODO: maybe add a callback here, usable in frontend?
         console.log("Solution found");
         this.solutions.add(state);
-        console.log(state.hash());
         newSolution(state.getSeats(), this.heuristic.evalState(state));
     }
 

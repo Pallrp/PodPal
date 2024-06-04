@@ -77,9 +77,12 @@
                 </div>
             </div>
             <div id="bottom-container" class="row">
-                <div class="row">
+                <div class="row text-center align-content-center w-100 table-order">
                     <h2>Table ordering</h2>
-                    <button type="button" id="activate-search-btn">Shuffle</button>
+                    <button type="button" id="activate-search-btn">
+                        <span id="search-title">Shuffle</span>
+                    </button>
+                    <img id="loading-spinner" class="loader d-none" src="media/circle.png" alt="manasymbols"/>
                 </div>
                 <div class="row">
                     <div class="col-10">
@@ -97,7 +100,7 @@
                         <div class="solution-seats-container">
                         </div>
                     </div>
-                    <div id="solution-seat-template" class="solution-seat">
+                    <div id="solution-seat-template" class="solution-seat" draggable="true">
                         <span class="solution-name">bruh</span>
                     </div>
                     
@@ -108,6 +111,6 @@
             </div>
         </div>
         <script src="main.js"></script>
-        <script src="agent.js"></script>
+        <script id="agent-script" src="agent.js"></script>
     </body>
 </html>
