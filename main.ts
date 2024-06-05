@@ -36,6 +36,8 @@ function loadPage() : void {
     addPlayer("John Don", [Powerlevel.MEDIUM]);
     addPlayer("Average Player (Derogatory)", [Powerlevel.MEDIUM]);
     addPlayer("John Rizzman", [Powerlevel.COMP]);
+    addPlayer("Abram", [Powerlevel.COMP]);
+    addPlayer("Skipper", [Powerlevel.HIGH, Powerlevel.MEDIUM]);
     addPlayer("Maximus Timmy", [Powerlevel.CASUAL]);
     addPlayer("Scrat", [Powerlevel.HIGH, Powerlevel.MEDIUM]);
     addPlayer("Scrut", [Powerlevel.HIGH, Powerlevel.MEDIUM]);
