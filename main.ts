@@ -15,13 +15,16 @@ const solutionButton = (document.getElementById('solution-button-template') as H
 const stagedSolutionTitleEl = (document.getElementById('solution-number') as HTMLElement);
 const loadingSpinner = (document.getElementById('loading-spinner') as HTMLElement);
 const searchBtns = (document.getElementsByClassName('search-btn') as HTMLCollection);
-
+const playerNameInput = (document.getElementById('add-player-name') as HTMLInputElement);
+const addPlayerButton = (document.getElementById('submit-player') as HTMLElement);
 var playerCount = 0;
 
 function loadPage() : void {
     addPowerSelections();
     addButtonEvents();
     bindSearch();
+    addFormBehaviour();
+
     addPlayer("Actual Brainrot", [Powerlevel.MEDIUM, Powerlevel.CASUAL]);
     addPlayer("Bruhman Lower", [Powerlevel.MEDIUM]);
     addPlayer("Chad.", [Powerlevel.COMP, Powerlevel.HIGH]);
@@ -41,42 +44,45 @@ function loadPage() : void {
     addPlayer("Casual", [Powerlevel.CASUAL]);
     addPlayer("Filthy Casual", [Powerlevel.CASUAL]);
 }
-
+function addFormBehaviour() {
+    document.getElementById('add-player-form')?.addEventListener("submit", (e) => {
+        e.preventDefault();
+        addPlayerButton.click();
+        playerNameInput.focus();
+    });
+}
 function clearForm(formId:string) : void {
     let form = document.getElementById(formId);
     if (form !== null) {
         form.querySelectorAll('input').forEach((target) => {
             target.value = "";
         });
-        form.querySelectorAll('select').forEach((target) => {
+        /*form.querySelectorAll('select').forEach((target) => {
             target.querySelectorAll('option').forEach((optTarget) => {
-                optTarget.selected = false;
+                optTarget.removeAttribute("checked");
             });
-        });
+        });*/
     }
 }
 
 function addButtonEvents() : void {
-    let addPlayerButton = document.getElementById('submit-player');
-    if (addPlayerButton !== null) {
-        addPlayerButton.addEventListener("click", (ev) => {
-            let playerName:string = (document.getElementById('add-player-name') as HTMLInputElement).value;
-            let playerPower:Array<number> = [];
-            let powerSelect = (document.getElementById('add-player-power') as HTMLElement);
-            for (let i = 0; i < powerSelect.children.length; i++) {
-                let option = powerSelect.children[i];
-                if (option.getAttribute("selected") == "true") {
-                    playerPower.push(Number(option.getAttribute("value")));
-                }
+    addPlayerButton.addEventListener("click", (ev) => {
+        let playerName:string = (playerNameInput).value;
+        let playerPower:Array<number> = [];
+        let powerSelect = (document.getElementById('add-player-power') as HTMLElement);
+        for (let i = 0; i < powerSelect.children.length; i++) {
+            let option = powerSelect.children[i];
+            if (option.hasAttribute("checked")) {
+                playerPower.push(Number(option.getAttribute("value")));
             }
-            console.log(playerName + "-" + playerPower);
-            if (playerName && playerPower) {
+        }
+        console.log(playerName + "-" + playerPower);
+        if (playerName && playerPower) {
 
-                addPlayer(playerName, playerPower);
-                clearForm('add-player-form');
-            }
-        });
-    }
+            addPlayer(playerName, playerPower);
+            clearForm('add-player-form');
+        }
+    });
 }
 
 function addPowerSelections() : void {
@@ -87,7 +93,10 @@ function addPowerSelections() : void {
             let optionEl:HTMLElement = document.createElement('option');
             optionEl.setAttribute('value', String(value));
             optionEl.innerHTML = powerName;
+            optionEl.setAttribute('id', "a");
+            optionEl.classList.add(getPowerClass(value));
             powerSelect.appendChild(optionEl);
+            optionEl.addEventListener("click", (ev) => {optionEl.toggleAttribute("checked")});
         }
     }
 }

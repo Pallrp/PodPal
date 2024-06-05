@@ -1,21 +1,21 @@
 .power-casual {
-    background-color: rgb(50,200,50);
+    background-color: rgb(50,200,50) !important;
 }
 
 .power-medium {
-    background-color: rgb(140, 200, 50);
+    background-color: rgb(140, 200, 50) !important;
 }
 
 .power-high {
-    background-color: rgb(192, 200, 50);
+    background-color: rgb(192, 200, 50) !important;
 }
 
 .power-comp {
-    background-color: rgb(200, 132, 50);
+    background-color: rgb(200, 132, 50) !important;
 }
 
 .power-err {
-    background-color: rgb(180, 50, 220);
+    background-color: rgb(180, 50, 220) !important;
 }
 
 .btn-remove {
@@ -110,6 +110,9 @@
 .table-order {
     flex-direction: column;
     align-items: center;
+}
+#a:not([checked]) {
+    background-color: inherit !important;
 }
 
 .player-power-container {

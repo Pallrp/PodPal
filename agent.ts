@@ -153,7 +153,8 @@ class Heuristic {
                 they will be moved to a pod with differing powerlevel
     */
     POWERDIFF:number = 15;          // Cost for level higher power that exist if theres a lower power in the pod
-                                    // Each level higher adds a squared multiplier to this score (1 level diff = 2x, 2 levels diff = 4x)
+                                    // Each level higher adds a multiplicative score for each player that's lower
+                                    // (1 level diff = 1*players lower, 2 levels diff = 2* players lower)
     WHITELIST:number = 0;           // Cost for Whitelist players are at same table
     BLACKLIST:number = 50;          // Cost for Blacklisted players are at same table
     EMPTYSEAT:number = 10;          // Cost for each empty seat on a table
