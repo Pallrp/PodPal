@@ -9,23 +9,23 @@ label, h2, h3
 }
 
 .power-casual {
-    background-color: rgb(50,200,50);
+    background-color: rgb(50,200,50) !important;
 }
 
 .power-medium {
-    background-color: rgb(140, 200, 50);
+    background-color: rgb(140, 200, 50) !important;
 }
 
 .power-high {
-    background-color: rgb(192, 200, 50);
+    background-color: rgb(192, 200, 50) !important;
 }
 
 .power-comp {
-    background-color: rgb(200, 132, 50);
+    background-color: rgb(200, 132, 50) !important;
 }
 
 .power-err {
-    background-color: rgb(180, 50, 220);
+    background-color: rgb(180, 50, 220) !important;
 }
 
 .btn-remove {
@@ -136,6 +136,29 @@ label, h2, h3
 .table-order {
     flex-direction: column;
     align-items: center;
+}
+#a:not([checked]) {
+    background-color: inherit !important;
+}
+
+.player-power-container {
+    flex-direction: row;
+    display: flex;
+}
+
+.powerpill {
+    font-size: 10px;
+    width: 100%;
+    height: 100%;
+}
+.solution-seat-power-container {
+    flex-direction: row;
+}
+.solution-name {
+    position:relative;
+}
+.solution-seat-name-container {
+    height:0;    
 }
 .new-col-3 {
     display: flex;

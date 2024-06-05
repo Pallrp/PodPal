@@ -1,5 +1,6 @@
 ///<reference path="main.ts"/>
-
+// timeout ms before search is abruptly stopped
+const TIMEOUT = 10000;
 const MAXSEATS = 4;
 const MAXSOLUTIONS = 10;
 // id -> Player dictionary for all players
@@ -152,10 +153,12 @@ class Heuristic {
                 they will be moved to a pod with differing powerlevel
     */
     POWERDIFF:number = 15;          // Cost for level higher power that exist if theres a lower power in the pod
-                                    // Each level higher adds a squared multiplier to this score (1 level diff = 2x, 2 levels diff = 4x)
-    WHITELIST:number = -25;           // Cost for Whitelist players are at same table
-    BLACKLIST:number = 100;          // Cost for Blacklisted players are at same table
-    EMPTYSEAT:number = 10;          // Cost for each player who hasnt been seated (default cost)
+                                    // Each level higher adds a multiplicative score for each player that's lower
+                                    // (1 level diff = 1*players lower, 2 levels diff = 2* players lower)
+    WHITELIST:number = 0;           // Cost for Whitelist players are at same table
+    BLACKLIST:number = 50;          // Cost for Blacklisted players are at same table
+    EMPTYSEAT:number = 10;          // Cost for each empty seat on a table
+    UNSEATED:number = -1;           // Encouragement cost -- try get the AI to check results that are closer to the goal 
     // SEAT:number = // Cost for seating a player TODO: do we need this?
 
     maxPlayers:number;
@@ -169,8 +172,25 @@ class Heuristic {
         if (playersSet.size == 0) {
             return null;
         }
-        return PLAYERS[Array.from(playersSet)[Math.floor(Math.random()*playersSet.size)]];
+        // return PLAYERS[Array.from(playersSet)[Math.floor(Math.random()*playersSet.size)]];
         // TODO: pick player with estimated least branching paths
+        // pick player with most power levels first
+        var playerArr = Array.from(playersSet).sort((a, b) => {
+            return PLAYERS[b].power.size - PLAYERS[a].power.size;
+        });
+        // shuffle lowest N players for diversity
+        let lowestN:Array<number> = [];
+        let n = PLAYERS[playerArr[0]].power.size;
+        for (let p of playerArr) {
+            if (PLAYERS[p].hasWhitelist() ||PLAYERS[p].hasBlacklist()) {
+                // least branches from list players
+                return PLAYERS[p];
+            }
+            if (PLAYERS[p].power.size == n) {
+                lowestN.push(p);
+            }
+        }
+        return PLAYERS[lowestN[Math.floor(Math.random() * lowestN.length)]];
         var setLength:number = playersSet.size;
         var i:number = 1;
         for (let objPlayerID of playersSet) {
@@ -197,59 +217,61 @@ class Heuristic {
         }
         var totalScore = 0;
         // var totalSeated = state.totalSeatedPlayers();
-        var player:Player,
+        var player1:Player,
+            player2:Player,
             tableScore:number,
-            totalDifferingPowers:number,
-            seatsByPower:Record<number, Set<number>>;
+            powerDiff:number,
+            totalPowerDiff:number;
         // search for black- & whitelist + differing powerlevels
         for (var table of state.tables) {
             if (table.seats.size() > 0) {
                 tableScore = 0;
-                seatsByPower = {};
-                totalDifferingPowers = 0;
+                totalPowerDiff = 0;
                 // add score for each empty seat
                 tableScore += (MAXSEATS - table.seats.size()) * this.EMPTYSEAT;
 
-                for (let objPlayerId of table.seats.heap) {
-                    player = PLAYERS[objPlayerId];
-                    totalDifferingPowers += addValToDictSet(seatsByPower, player.power, player.id);
-                    if (player.hasBlacklist()) {
-                        if(table.containsBlackList(player)) {
-                            // add whitelist score
+                for (let playerId1 of table.seats.heap) {
+                    player1 = PLAYERS[playerId1];
+                    for (let playerId2 of table.seats.heap) {
+                        if (playerId1 != playerId2) {
+                            player2 = PLAYERS[playerId2];
+                            // take difference in powerlevel
+                            if (player1.whitelist.has(player2.id)) {
+                                continue; // powerdiff has no effect on whitelist
+                            }
+                            if (player1.power.has(player2.lowestPower)) {
+                                continue; // player can compete here, no need to check for power mismatch
+                            }
+                            // there's a power mismatch, count all (higher - lower) instances
+                            powerDiff = player1.lowestPower - player2.lowestPower;
+                            if (powerDiff > 0) {
+                                // we're more concerned with higher power pubstomping rather
+                                // than lower power -- 3 low & 1 high will be counted 3 times to totalPowerDiff
+                                totalPowerDiff += powerDiff;
+                            }
+                        }
+                    }
+                    // add powerdiff multiplier to score
+                    tableScore += Math.round(totalPowerDiff * this.POWERDIFF);
+                    // check lists
+                    if (player1.hasBlacklist()) {
+                        if(table.containsBlackList(player1)) {
+                            // add blacklist score
                             tableScore += this.BLACKLIST;
                         }
                     }
-                    if (player.hasWhitelist()) {
-                        if(table.containsWhitelist(player)) {
+                    if (player1.hasWhitelist()) {
+                        if(table.containsWhitelist(player1)) {
                             // add blacklist score
                             tableScore += this.WHITELIST;
                         }
                     }
                 }
-                // check powerlevels
-                if (totalDifferingPowers > 1) {
-                    var differingPowers = 0;
-                    var powerLevel:string, playerSet:Set<number>;
-                    
-                    for ([powerLevel, playerSet] of Object.entries(seatsByPower)) {
-                        // more higher power than lower are preferrable over more lower over higher
-                        // for each player at higher, increment by one 
-                        let PL:number = Number(powerLevel);
-                        if (String(PL + 1) in seatsByPower) {
-                            differingPowers += playerSet.size * 1;
-                        }
-                        if (String(PL + 2) in seatsByPower) {
-                            differingPowers += playerSet.size * 2;
-                        }
-                        if (String(PL + 3) in seatsByPower) {
-                            differingPowers += playerSet.size * 4;
-                        }
-                    }
-                    tableScore += differingPowers * this.POWERDIFF;
-                }
                 totalScore += tableScore;
             }
         }
+        // add UNSEATED cost for all unseated players
+        totalScore += state.playersLeft.size * this.UNSEATED;
         this.hashmap[stateHash] = totalScore;
         return totalScore;
     }
@@ -392,13 +414,14 @@ class Agent {
     unsortedPlayers:Set<number>
     frontier:MinHeap<State>;
     maxSolutions:number;
-    solutions:Set<State>;
+    solutions:Array<State>;
+    timeoutAt:number;
     constructor(heuristic:Heuristic, environment:Environment, maxSolutions:number) {
         this.heuristic = heuristic;
         this.env = environment;
-        this.solutions = new Set();
+        this.solutions = [];
         this.maxSolutions = maxSolutions;
-
+        this.timeoutAt = Date.now() + TIMEOUT;
         this.unsortedPlayers = new Set();
         this.env.playersList.map((player) => {this.unsortedPlayers.add(player.id)});
     }
@@ -406,8 +429,10 @@ class Agent {
     addSolution(state:State) {
         // TODO: maybe add a callback here, usable in frontend?
         console.log("Solution found");
-        this.solutions.add(state);
-        newSolution(state.getSeats(), this.heuristic.evalState(state));
+        if (this.solutions.length >= this.maxSolutions) {
+            this.solutions.shift();
+        }
+        this.solutions.push(state);
     }
     search() {
         throw Error("Base Agent does not implement a search() method");
@@ -422,6 +447,11 @@ class Agent {
         let initialState:State = this.env.getInitialState();
         this.initializeFrontier(initialState);
         this.search();
+    }
+    checkTimeout() {
+        if (Date.now() > this.timeoutAt) {
+            throw Error("Agent timed out during search");
+        }
     }
 }
 
@@ -466,9 +496,7 @@ class AStarAgent extends Agent {
                     this.addSolution(currentState);
                     exploredStates.add(currentState.hash());
                 }
-                if (this.solutions.size >= this.maxSolutions) {
-                    return;
-                }
+                this.checkTimeout();
             } else if (!(exploredStates.has(currentState.hash()))) {
                 // add state to explored
                 exploredStates.add(currentState.hash());
@@ -540,21 +568,26 @@ class Table {
 
 /* The node for a player */
 class Player {
-    id:number
-    name:string
-    power:number
-    whitelist:Set<number>
-    blacklist:Set<number>
-    hashValue:number
+    id:number;
+    name:string;
+    power:Set<number>;
+    whitelist:Set<number>;
+    blacklist:Set<number>;
+    hashValue:number;
+    lowestPower:number;
 
-    constructor(id:number, name:string, power:number) {
+    constructor(id:number, name:string, power:Set<number>) {
         this.id = id;
         this.name = name;
         this.power = power;
         this.whitelist = new Set();
         this.blacklist = new Set();
         this.hashValue = hashString(this.name);
+        this.lowestPower = (Array.from(this.power).reduce(
+            (prev, curr) => {return prev < curr ? prev : curr;}, Infinity
+        ));
     }
+
     /* Sets the whitelist variable as the set or iterable */
     setWhitelist(whitelist:Set<number>) {
         this.whitelist = whitelist;
@@ -600,7 +633,12 @@ function collectPlayers():Array<Player> {
             (elem.getAttribute("id") as string).split("-")[1]
         );
         let name:string = (elem.querySelector('.player-name') as HTMLElement).innerHTML.trim();
-        let power:number = Number(elem.querySelector(".player-power-container")?.getAttribute("value") as string);
+        let power:Set<number> = new Set();
+        let powerContainer = (elem.querySelector(".player-power-container") as HTMLElement);
+        for (let i = 0; i < powerContainer.children.length; i++) {
+            let powerSelection = powerContainer.children[i];
+            power.add(Number(powerSelection.getAttribute("value")));
+        }
         let newP = new Player(id, name, power);
         // TODO: add whitelist
         newP.setBlacklist(new Set(getList("blacklist", elem)));
@@ -660,7 +698,23 @@ function doSearch(agentType:string) {
     } else {
         throw Error("No agent type selected");
     }
-    agent.start();
-    console.log(agent.solutions.size + " solutions found");
+    try {
+        agent.start();
+    } catch (e) {
+        let logger = console.error;
+        let msg = e;
+        if (e.message == "Agent timed out during search") {
+            logger = console.log;
+            msg = e.message;
+        }
+        logger(msg);
+    }
+    // add solutions
+    for (let i = agent.solutions.length - 1; i >= 0; i--) {
+        // reverse iteration shows best first
+        let state = agent.solutions[i];
+        newSolution(state.getSeats(), agent.heuristic.evalState(state));
+    }
+    console.log(agent.solutions.length + " solutions found");
     // return multiple solutions, maybe add a solution to the DOM each time a solution is found?
 }
