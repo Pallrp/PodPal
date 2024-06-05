@@ -157,8 +157,8 @@ class Heuristic {
                                     // (1 level diff = 1*players lower, 2 levels diff = 2* players lower)
     WHITELIST:number = 0;           // Cost for Whitelist players are at same table
     BLACKLIST:number = 50;          // Cost for Blacklisted players are at same table
-    EMPTYSEAT:number = 10;          // Cost for each empty seat on a table
-    UNSEATED:number = -1;           // Encouragement cost -- try get the AI to check results that are closer to the goal 
+    EMPTYSEAT:number = 10;           // Cost for each empty seat on a table
+    UNSEATED:number = 1;           // Encouragement cost -- try get the AI to check results that are closer to the goal 
     // SEAT:number = // Cost for seating a player TODO: do we need this?
 
     maxPlayers:number;
@@ -239,7 +239,7 @@ class Heuristic {
                             if (player1.whitelist.has(player2.id)) {
                                 continue; // powerdiff has no effect on whitelist
                             }
-                            if (player1.power.has(player2.lowestPower)) {
+                            if (player2.power.has(player1.lowestPower)) {
                                 continue; // player can compete here, no need to check for power mismatch
                             }
                             // there's a power mismatch, count all (higher - lower) instances
@@ -284,7 +284,7 @@ class Environment {
     tables:Array<Table>;
 
     constructor(players:Array<Player>) {
-        this.maxTables = Math.round(players.length / 3);
+        this.maxTables = Math.floor(players.length / 3);
         this.constructTables();
         this.loadPlayersToGlobal(players);
         this.playersList = players;
@@ -428,7 +428,6 @@ class Agent {
 
     addSolution(state:State) {
         // TODO: maybe add a callback here, usable in frontend?
-        console.log("Solution found");
         if (this.solutions.length >= this.maxSolutions) {
             this.solutions.shift();
         }
