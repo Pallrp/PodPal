@@ -1,9 +1,33 @@
-body {
-    background-color: #000328;
-    color: black;
+html, body{
+    padding: 0;
+    margin: 0;
   }
 
+html{
+    height: 100%;
+  }
+
+body{
+    height: 100%;
+    background-color: #383636;
+  }
+
+.container {
+    background-color: rgb(94, 94, 94, 0.35);
+    min-height: 100%;
+}
+
 label, h2, h3
+{
+    color: #ea4b12;
+}
+
+label
+{
+    font-size: 1.25rem;
+}
+
+.player-header
 {
     color: white;
 }
