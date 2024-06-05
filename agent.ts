@@ -154,10 +154,10 @@ class Heuristic {
     */
     POWERDIFF:number = 15;          // Cost for level higher power that exist if theres a lower power in the pod
                                     // Each level higher adds a squared multiplier to this score (1 level diff = 2x, 2 levels diff = 4x)
-    WHITELIST:number = -25;         // Cost for Whitelist players are at same table
-    BLACKLIST:number = 100;         // Cost for Blacklisted players are at same table
+    WHITELIST:number = 0;           // Cost for Whitelist players are at same table
+    BLACKLIST:number = 50;          // Cost for Blacklisted players are at same table
     EMPTYSEAT:number = 10;          // Cost for each empty seat on a table
-    UNSEATED:number = 20;           // Encouragement cost -- try get the AI to check results that are closer to the goal 
+    UNSEATED:number = -1;           // Encouragement cost -- try get the AI to check results that are closer to the goal 
     // SEAT:number = // Cost for seating a player TODO: do we need this?
 
     maxPlayers:number;
@@ -177,7 +177,19 @@ class Heuristic {
         var playerArr = Array.from(playersSet).sort((a, b) => {
             return PLAYERS[b].power.size - PLAYERS[a].power.size;
         });
-        return PLAYERS[playerArr[0]];
+        // shuffle lowest N players for diversity
+        let lowestN:Array<number> = [];
+        let n = PLAYERS[playerArr[0]].power.size;
+        for (let p of playerArr) {
+            if (PLAYERS[p].hasWhitelist() ||PLAYERS[p].hasBlacklist()) {
+                // least branches from list players
+                return PLAYERS[p];
+            }
+            if (PLAYERS[p].power.size == n) {
+                lowestN.push(p);
+            }
+        }
+        return PLAYERS[lowestN[Math.floor(Math.random() * lowestN.length)]];
         var setLength:number = playersSet.size;
         var i:number = 1;
         for (let objPlayerID of playersSet) {
@@ -223,7 +235,14 @@ class Heuristic {
                         if (playerId1 != playerId2) {
                             player2 = PLAYERS[playerId2];
                             // take difference in powerlevel
-                            powerDiff = player1.averagePower - player2.averagePower;
+                            if (player1.whitelist.has(player2.id)) {
+                                continue; // powerdiff has no effect on whitelist
+                            }
+                            if (player1.power.has(player2.lowestPower)) {
+                                continue; // player can compete here, no need to check for power mismatch
+                            }
+                            // there's a power mismatch, count all (higher - lower) instances
+                            powerDiff = player1.lowestPower - player2.lowestPower;
                             if (powerDiff > 0) {
                                 // we're more concerned with higher power pubstomping rather
                                 // than lower power -- 3 low & 1 high will be counted 3 times to totalPowerDiff
@@ -394,12 +413,12 @@ class Agent {
     unsortedPlayers:Set<number>
     frontier:MinHeap<State>;
     maxSolutions:number;
-    solutions:Set<State>;
+    solutions:Array<State>;
     timeoutAt:number;
     constructor(heuristic:Heuristic, environment:Environment, maxSolutions:number) {
         this.heuristic = heuristic;
         this.env = environment;
-        this.solutions = new Set();
+        this.solutions = [];
         this.maxSolutions = maxSolutions;
         this.timeoutAt = Date.now() + TIMEOUT;
         this.unsortedPlayers = new Set();
@@ -409,8 +428,10 @@ class Agent {
     addSolution(state:State) {
         // TODO: maybe add a callback here, usable in frontend?
         console.log("Solution found");
-        this.solutions.add(state);
-        newSolution(state.getSeats(), this.heuristic.evalState(state));
+        if (this.solutions.length >= this.maxSolutions) {
+            this.solutions.shift();
+        }
+        this.solutions.push(state);
     }
     search() {
         throw Error("Base Agent does not implement a search() method");
@@ -473,9 +494,6 @@ class AStarAgent extends Agent {
                     bestScore = stateScore;
                     this.addSolution(currentState);
                     exploredStates.add(currentState.hash());
-                }
-                if (this.solutions.size >= this.maxSolutions) {
-                    return;
                 }
                 this.checkTimeout();
             } else if (!(exploredStates.has(currentState.hash()))) {
@@ -555,7 +573,7 @@ class Player {
     whitelist:Set<number>;
     blacklist:Set<number>;
     hashValue:number;
-    averagePower:number;
+    lowestPower:number;
 
     constructor(id:number, name:string, power:Set<number>) {
         this.id = id;
@@ -564,9 +582,9 @@ class Player {
         this.whitelist = new Set();
         this.blacklist = new Set();
         this.hashValue = hashString(this.name);
-        this.averagePower = (Array.from(this.power).reduce(
-            (prev, curr) => {return prev + curr}, 0
-        )) / this.power.size;
+        this.lowestPower = (Array.from(this.power).reduce(
+            (prev, curr) => {return prev < curr ? prev : curr;}, Infinity
+        ));
     }
 
     /* Sets the whitelist variable as the set or iterable */
@@ -679,7 +697,23 @@ function doSearch(agentType:string) {
     } else {
         throw Error("No agent type selected");
     }
-    agent.start();
-    console.log(agent.solutions.size + " solutions found");
+    try {
+        agent.start();
+    } catch (e) {
+        let logger = console.error;
+        let msg = e;
+        if (e.message == "Agent timed out during search") {
+            logger = console.log;
+            msg = e.message;
+        }
+        logger(msg);
+    }
+    // add solutions
+    for (let i = agent.solutions.length - 1; i >= 0; i--) {
+        // reverse iteration shows best first
+        let state = agent.solutions[i];
+        newSolution(state.getSeats(), agent.heuristic.evalState(state));
+    }
+    console.log(agent.solutions.length + " solutions found");
     // return multiple solutions, maybe add a solution to the DOM each time a solution is found?
 }
