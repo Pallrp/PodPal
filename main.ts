@@ -1,40 +1,45 @@
 ///<reference path="agent.ts"/>
 
+// #### Templates ####
 const playerTemplateEl = (document.getElementById('player-container-template') as HTMLElement);
-const playerContainer = (document.getElementById('players-container') as HTMLElement);
 const listTemplateEl = (document.getElementById('list-template') as HTMLElement);
 const solutionTableTemplate = (document.getElementById('solution-table-template') as HTMLElement);
 const solutionSeatTemplate = (document.getElementById('solution-seat-template') as HTMLElement);
+const powerPillTemplate = (document.getElementById('power-pill-template') as HTMLElement);
+// #### Containers ####
+const playerContainer = (document.getElementById('players-container') as HTMLElement);
 const solutionStage = (document.getElementById('staged-solution') as HTMLElement);
 const solutionsList = (document.getElementById('solutions-area') as HTMLElement);
+// #### Misc ####
 const solutionButton = (document.getElementById('solution-button-template') as HTMLElement);
 const stagedSolutionTitleEl = (document.getElementById('solution-number') as HTMLElement);
 const loadingSpinner = (document.getElementById('loading-spinner') as HTMLElement);
 const searchBtns = (document.getElementsByClassName('search-btn') as HTMLCollection);
+
 var playerCount = 0;
 
 function loadPage() : void {
     addPowerSelections();
     addButtonEvents();
     bindSearch();
-    addPlayer("Actual Brainrot", Powerlevel.MEDIUM);
-    addPlayer("Bruhman Lower", Powerlevel.MEDIUM);
-    addPlayer("Chad.", Powerlevel.COMP);
-    addPlayer("Flip", Powerlevel.COMP);
-    addPlayer("Chud", Powerlevel.COMP);
-    addPlayer("John Doe", Powerlevel.MEDIUM);
-    addPlayer("John Die", Powerlevel.MEDIUM);
-    addPlayer("John Deo", Powerlevel.MEDIUM);
-    addPlayer("John Don", Powerlevel.MEDIUM);
-    addPlayer("Average Player (Derogatory)", Powerlevel.MEDIUM);
-    addPlayer("John Rizzman", Powerlevel.COMP);
-    addPlayer("Maximus Timmy", Powerlevel.CASUAL);
-    addPlayer("Scrat", Powerlevel.HIGH);
-    addPlayer("Scrut", Powerlevel.HIGH);
-    addPlayer("Skibidi", Powerlevel.HIGH);
-    addPlayer("Zoomer Zubar", Powerlevel.CASUAL);
-    addPlayer("Casual", Powerlevel.CASUAL);
-    addPlayer("Filthy Casual", Powerlevel.CASUAL);
+    addPlayer("Actual Brainrot", [Powerlevel.MEDIUM, Powerlevel.CASUAL]);
+    addPlayer("Bruhman Lower", [Powerlevel.MEDIUM]);
+    addPlayer("Chad.", [Powerlevel.COMP, Powerlevel.HIGH]);
+    addPlayer("Flip", [Powerlevel.COMP, Powerlevel.HIGH]);
+    addPlayer("Chud", [Powerlevel.COMP, Powerlevel.MEDIUM, Powerlevel.CASUAL, Powerlevel.HIGH]);
+    addPlayer("John Doe", [Powerlevel.MEDIUM, Powerlevel.CASUAL]);
+    addPlayer("John Die", [Powerlevel.MEDIUM]);
+    addPlayer("John Deo", [Powerlevel.MEDIUM, Powerlevel.CASUAL]);
+    addPlayer("John Don", [Powerlevel.MEDIUM]);
+    addPlayer("Average Player (Derogatory)", [Powerlevel.MEDIUM]);
+    addPlayer("John Rizzman", [Powerlevel.COMP]);
+    addPlayer("Maximus Timmy", [Powerlevel.CASUAL]);
+    addPlayer("Scrat", [Powerlevel.HIGH, Powerlevel.MEDIUM]);
+    addPlayer("Scrut", [Powerlevel.HIGH, Powerlevel.MEDIUM]);
+    addPlayer("Skibidi", [Powerlevel.HIGH, Powerlevel.MEDIUM]);
+    addPlayer("Zoomer Zubar", [Powerlevel.CASUAL]);
+    addPlayer("Casual", [Powerlevel.CASUAL]);
+    addPlayer("Filthy Casual", [Powerlevel.CASUAL]);
 }
 
 function clearForm(formId:string) : void {
@@ -55,12 +60,19 @@ function addButtonEvents() : void {
     let addPlayerButton = document.getElementById('submit-player');
     if (addPlayerButton !== null) {
         addPlayerButton.addEventListener("click", (ev) => {
-            let playerName = (document.getElementById('add-player-name') as HTMLInputElement).value;
-            let playerPower = (document.getElementById('add-player-power') as HTMLOptionElement).value;
+            let playerName:string = (document.getElementById('add-player-name') as HTMLInputElement).value;
+            let playerPower:Array<number> = [];
+            let powerSelect = (document.getElementById('add-player-power') as HTMLElement);
+            for (let i = 0; i < powerSelect.children.length; i++) {
+                let option = powerSelect.children[i];
+                if (option.getAttribute("selected") == "true") {
+                    playerPower.push(Number(option.getAttribute("value")));
+                }
+            }
             console.log(playerName + "-" + playerPower);
             if (playerName && playerPower) {
 
-                addPlayer(playerName, Number(playerPower));
+                addPlayer(playerName, playerPower);
                 clearForm('add-player-form');
             }
         });
@@ -147,7 +159,7 @@ function sortPlayers() :void {
     }, null);
 }
 
-function addPlayer(name:string, powerLevel:number) : void {
+function addPlayer(name:string, powerLevels:Array<number>) : void {
     playerCount++;
     let newPlayerEl = (playerTemplateEl.cloneNode(true) as HTMLElement);
     // replace template id
@@ -155,13 +167,17 @@ function addPlayer(name:string, powerLevel:number) : void {
     newPlayerEl.setAttribute('id', newId);
     // add attributes
     (newPlayerEl.querySelector('.player-name') as HTMLElement).innerHTML = name;
-
-    let levelCls = getPowerClass(powerLevel);
-    let levelName = getPowerVerboseName(powerLevel);
     let powerContainer = (newPlayerEl.querySelector('.player-power-container') as HTMLElement);
-    powerContainer.classList.add(levelCls);
-    powerContainer.innerHTML = levelName;
-    powerContainer.setAttribute('value', String(powerLevel));
+    for (let powerLevel of powerLevels) {
+        let levelCls = getPowerClass(powerLevel);
+        let levelName = getPowerVerboseName(powerLevel);
+        let powerPill = (powerPillTemplate.cloneNode(true) as HTMLElement);
+        powerPill.removeAttribute('id');
+        powerPill.innerHTML = levelName;
+        powerPill.classList.add(levelCls);
+        powerPill.setAttribute("value", String(powerLevel));
+        powerContainer.appendChild(powerPill);
+    }
     
     // add remove button functionalities
     newPlayerEl.querySelector('.rm-player-btn')?.addEventListener("click", function (ev) {
@@ -404,15 +420,26 @@ function stageSolution(solutionIndex:number) : void {
             } else {
                 playerName = "Error";
             }
-            let seatNameEl = newSolutionSeat.querySelector('.solution-name')
+            let seatNameEl = newSolutionSeat.querySelector('.solution-name');
             if (seatNameEl) {
                 seatNameEl.innerHTML = playerName;
             }
             // set powerlevel
-            let playerPower = (playerEl.querySelector('.player-power-container') as HTMLElement).getAttribute("value");
-            newSolutionSeat.classList.add(
-                getPowerClass(Number(playerPower))
-            );
+            
+            let powerContainer = (playerEl.querySelector(".player-power-container") as HTMLElement);
+            let powerList:Array<number> = [];
+            for (let i = 0; i < powerContainer.children.length; i++) {
+                let powerSelection = powerContainer.children[i];
+                powerList.push(Number(powerSelection.getAttribute("value")));
+            }
+            powerList.sort();
+            let powerPillsContainer = (newSolutionSeat.querySelector('.solution-seat-power-container') as HTMLElement);
+            for (let power of powerList) {
+                let newPill:HTMLElement = (powerPillTemplate.cloneNode(true) as HTMLElement);
+                newPill.removeAttribute("id");
+                newPill.classList.add(getPowerClass(power));
+                powerPillsContainer.appendChild(newPill);
+            }
             // add drag events    
             newSolutionSeat.setAttribute('draggable', 'true');
             newSolutionSeat.addEventListener('dragstart', dragStagedPlayer);
@@ -452,10 +479,15 @@ function bindSearch() : void {
 function newSearch(agent:string) : void {
     toggleLoad();
     resetSolutions(); // reset before search
+    // give a couple ms for the loader to appear
     setTimeout(() => {
-        doSearch(agent);
+        try {
+            doSearch(agent);
+        } catch (e) {
+            console.error(e);
+        }
         toggleLoad();
-    }, 10);
+    });
 }
 
 document.addEventListener('DOMContentLoaded', () => {

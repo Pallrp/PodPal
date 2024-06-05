@@ -111,3 +111,23 @@
     flex-direction: column;
     align-items: center;
 }
+
+.player-power-container {
+    flex-direction: row;
+    display: flex;
+}
+
+.powerpill {
+    font-size: 10px;
+    width: 100%;
+    height: 100%;
+}
+.solution-seat-power-container {
+    flex-direction: row;
+}
+.solution-name {
+    position:relative;
+}
+.solution-seat-name-container {
+    height:0;    
+}
