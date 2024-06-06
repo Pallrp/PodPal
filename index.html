@@ -10,24 +10,36 @@
     </head>
     <body>
         <div class="container">
-            <div id="top-container" class="row">
-                <div id="form-container" class="col mt-3">
-                    <form id="add-player-form">
-                        <div class="row">
+            <div id="top-container" class="col">
+                <div id="form-container" class="flex">
+                    <form id="add-player-form" class="fill-half">
+                        <div class="form-container-content" >
                             <label for="add-player-name">Player Name</label>
                             <input id="add-player-name" type="text" name="input-player-name">
                         </div>
-                        <div class="row mt-3">
-                            <label for="add-player-power">Power Level</label>
+                        <div class="form-container-content col mt-3">
+                            <div>
+                                <label for="add-player-power">Power Level</label>
+                            </div>
                             <!-- populated in main -->
                             <select name="input-player-power" id="add-player-power" multiple></select> <!-- TODO: add support for multiple-->
-                        </div>
-                        <div class="row mt-3">
-                            <button id="submit-player" type="button">
-                                Add Player
-                            </button>
+                            <div>
+                                <button id="submit-player" type="button">
+                                    Add Player
+                                </button>
+                            </div>
                         </div>
                     </form>
+                    <div class="text-center align-content-center w-50 table-order">
+                        <h2>Table ordering</h2>
+                        <button type="button" class="search-btn" id="activate-search-agent">
+                            <span id="search-title">Cook</span>
+                        </button>
+                        <button type="button" class="search-btn" id="activate-random-agent">
+                            <span id="search-title">Shuffle</span>
+                        </button>
+                        <img id="loading-spinner" class="loader d-none" src="media/circle.png" alt="manasymbols"/>
+                    </div>
                 </div>
                 <div id="players-added-container" class="col mx-1">
                     <h2>Signup</h2>
@@ -77,16 +89,6 @@
                 </div>
             </div>
             <div id="bottom-container" class="row">
-                <div class="row text-center align-content-center w-100 table-order">
-                    <h2>Table ordering</h2>
-                    <button type="button" class="search-btn" id="activate-search-agent">
-                        <span id="search-title">Cook</span>
-                    </button>
-                    <button type="button" class="search-btn" id="activate-random-agent">
-                        <span id="search-title">Shuffle</span>
-                    </button>
-                    <img id="loading-spinner" class="loader d-none" src="media/circle.png" alt="manasymbols"/>
-                </div>
                 <div class="row">
                     <div class="col-10">
                         <h3 id="solution-number"></h3>
