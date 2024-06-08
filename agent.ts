@@ -491,6 +491,7 @@ class AStarAgent extends Agent {
                         this.addSolution(currentState);
                         exploredStates.add(currentState.hash());
                     }
+                    this.checkTimeout();
                 } else {
                     this.nodesSkipped++;
                 }
