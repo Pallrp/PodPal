@@ -260,12 +260,6 @@ class Heuristic {
                             tableScore += this.BLACKLIST;
                         }
                     }
-                    if (player1.hasWhitelist()) {
-                        if(table.containsWhitelist(player1)) {
-                            // add blacklist score
-                            tableScore += this.WHITELIST;
-                        }
-                    }
                 }
                 totalScore += tableScore;
             }
@@ -286,14 +280,7 @@ class Environment {
     constructor(players:Array<Player>) {
         this.maxTables = Math.floor(players.length / 3);
         this.constructTables();
-        this.loadPlayersToGlobal(players);
         this.playersList = players;
-    }
-    loadPlayersToGlobal(players:Array<Player>) {
-        PLAYERS = {};
-        for (let player of players) {
-            PLAYERS[player.id] = player;
-        }
     }
 
     constructTables() {
@@ -307,14 +294,14 @@ class Environment {
     
     isGoalState(state:State) {
         // return true if all seats filled
-        return state.totalSeatedPlayers() == this.playersList.length;
+        return state.playersLeft.size == 0;
     }
 
     legalActions(state:State, player:Player) : Array<Table> {
         // legal seats for player instead of (for each player, for each table) decreases the scope by a considerable margin
         var availableTables:Array<Table> = [];
         for (let table of state.tables) {
-            if (!table.isFull()) {
+            if (table.canSeat(player.id)) {
                 availableTables.push(table);
             }
         }
@@ -416,6 +403,11 @@ class Agent {
     maxSolutions:number;
     solutions:Array<State>;
     timeoutAt:number;
+    // staticstic
+    nodesExpanded:number;   // how many states are checked for expansion
+    nodesGenerated:number;  // how many states are generated
+    nodesSkipped:number;    // how many states are skipped due to already explored
+    goalsFound:number;      // how many goal states are generated
     constructor(heuristic:Heuristic, environment:Environment, maxSolutions:number) {
         this.heuristic = heuristic;
         this.env = environment;
@@ -424,6 +416,7 @@ class Agent {
         this.timeoutAt = Date.now() + TIMEOUT;
         this.unsortedPlayers = new Set();
         this.env.playersList.map((player) => {this.unsortedPlayers.add(player.id)});
+        this.nodesGenerated = this.goalsFound = this.nodesSkipped = this.nodesExpanded = 0;
     }
 
     addSolution(state:State) {
@@ -486,16 +479,21 @@ class AStarAgent extends Agent {
         while (this.frontier.peek() !== null) {
             // take out cheapest state known
             currentState = (this.frontier.remove() as State);
+            this.nodesExpanded ++;
 
-            if (this.env.isGoalState(currentState) && !(exploredStates.has(currentState.hash()))) {
-                // state has all players sorted, check if we've beat the record
-                stateScore = this.heuristic.evalState(currentState);
-                if (bestScore >= stateScore) {
-                    bestScore = stateScore;
-                    this.addSolution(currentState);
-                    exploredStates.add(currentState.hash());
+            if (this.env.isGoalState(currentState) ) {
+                this.goalsFound++;
+                if (!(exploredStates.has(currentState.hash()))) {
+                    // state has all players sorted, check if we've beat the record
+                    stateScore = this.heuristic.evalState(currentState);
+                    if (bestScore >= stateScore) {
+                        bestScore = stateScore;
+                        this.addSolution(currentState);
+                        exploredStates.add(currentState.hash());
+                    }
+                } else {
+                    this.nodesSkipped++;
                 }
-                this.checkTimeout();
             } else if (!(exploredStates.has(currentState.hash()))) {
                 // add state to explored
                 exploredStates.add(currentState.hash());
@@ -509,9 +507,15 @@ class AStarAgent extends Agent {
                         //stateScore = this.heuristic.evalState(nextState);
                         // Add all states
                         this.frontier.add(nextState);
+                        this.nodesGenerated++;
+                    } else {
+                        this.nodesSkipped++;
                     }
                 }
+            } else {
+                this.nodesSkipped++;
             }
+            this.checkTimeout();
         }
     }
 }
@@ -533,10 +537,15 @@ class Table {
 
     seatPlayer(playerId:number) {
         this.seats.add(playerId);
+        if (PLAYERS[playerId].hasWhitelist()) {
+            for (let listplayer of PLAYERS[playerId].whitelist) {
+                this.seats.add(listplayer);
+            }
+        }
     }
-    
-    isFull() : boolean {
-        return this.seats.size() >= MAXSEATS;
+
+    canSeat(playerId:number) : boolean {
+        return (this.seats.size() + PLAYERS[playerId].seatSize()) <= MAXSEATS;
     }
 
     containsList(player:Player, listAttr:string) : boolean {
@@ -596,6 +605,12 @@ class Player {
     setBlacklist(blacklist:Set<number>) {
         this.blacklist = blacklist;
     }
+    seatSize() : number {
+        if (this.hasWhitelist()) {
+            return this.whitelist.size + 1;
+        }
+        return 1;
+    }
 
     hasWhitelist():boolean {
         return this.whitelist.size > 0;
@@ -625,8 +640,8 @@ function getList(listtype:string, playerEl:Element) : Array<number>{
 /* Returns a list of all added players, instantiated in a list of Player classes */
 function collectPlayers():Array<Player> {
     let playersContainer = (document.getElementById('players-container') as HTMLElement);
-    let playersList = new Array();
-
+    var playersList:Array<number> = [];
+    PLAYERS = {};
     Array.from(playersContainer.children).forEach((function (elem) {
         let id:number = Number(
             (elem.getAttribute("id") as string).split("-")[1]
@@ -639,15 +654,27 @@ function collectPlayers():Array<Player> {
             power.add(Number(powerSelection.getAttribute("value")));
         }
         let newP = new Player(id, name, power);
-        // TODO: add whitelist
+        // TODO: add blacklist
         newP.setBlacklist(new Set(getList("blacklist", elem)));
         newP.setWhitelist(new Set(getList("whitelist", elem)));
-        //newP.setWhitelist(stuff);
-        // TODO: add blacklist
-        //newP.setBlacklist(stuff);
-        playersList.push(newP);
+        playersList.push(newP.id);
+        PLAYERS[newP.id] = newP;
     }));
-    return playersList;
+    let addedPlayers:Set<number> = new Set();
+    let returnList:Array<Player> = [];
+    for (let playerId of playersList) {
+        if (addedPlayers.has(playerId)) {
+            continue;
+        }
+        returnList.push(PLAYERS[playerId]);
+        if (PLAYERS[playerId].hasWhitelist()) {
+            for (let listplayer of PLAYERS[playerId].whitelist) {
+                addedPlayers.add(listplayer);
+            }
+        }
+        addedPlayers.add(playerId);
+    }
+    return returnList;
 }
 // HELPER FUNCTIONS
 function playernameSort(a:number, b:number) :number {
@@ -715,5 +742,11 @@ function doSearch(agentType:string) {
         newSolution(state.getSeats(), agent.heuristic.evalState(state));
     }
     console.log(agent.solutions.length + " solutions found");
+    console.log(
+        "Nodes generated: ", agent.nodesGenerated,
+        " Nodes expanded: ", agent.nodesExpanded,
+        " Nodes skipped", agent.nodesSkipped,
+        " Total goal nodes: ", agent.goalsFound
+    );
     // return multiple solutions, maybe add a solution to the DOM each time a solution is found?
 }

@@ -138,6 +138,10 @@ function getPowerVerboseName(powerLevel:number) : string {
 function removePlayer(playerId:string) : void {
     let p = (document.getElementById(playerId) as HTMLElement);
     let listId = getListId(p);
+    // remove all white/black list pairs
+    p.querySelectorAll('.rm-list-btn').forEach((el) => {
+        (el as HTMLElement).click();
+    })
     // remove player
     p.remove();
     // remove all list elements
