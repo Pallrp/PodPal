@@ -1,3 +1,51 @@
+html, body{
+    padding: 0;
+    margin: 0;
+  }
+
+html{
+    height: 100%;
+  }
+
+body{
+    height: 100%;
+    background-color: #383636;
+  }
+
+button
+  {
+    width: 100%;
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+
+  select
+  {
+    width: 100%;
+  }
+
+
+label, h2, h3
+{
+    color: #ea4b12;
+}
+
+label
+{
+    font-size: 1.25rem;
+}
+
+.container {
+    background-color: rgb(94, 94, 94, 0.35);
+    min-height: 100%;
+}
+.player-header
+{
+    color: white;
+}
+
 .power-casual {
     background-color: rgb(50,200,50) !important;
 }
@@ -74,14 +122,30 @@
     min-height: 10rem;
     padding-left: 0;
     padding-right: 0;
-    display: grid;
+    display: flex;
+    flex-wrap: wrap;
+    min-width: 10%;
+    border-radius: 10px;
+    overflow: hidden;
 }
 .solution-seat {
-    text-align:center;
+    text-align: center;
+    display: flex;
+    flex-wrap: wrap;
+    width: 50%;
+    max-height: 60%;
+    font-size: 1.5vw;
 }
 .solutions-area {
     border-left:solid 1px black;
     min-height:100%;
+}
+.solution-name {
+    margin-top: auto;
+    margin-bottom: auto;
+    margin-left: 1em;
+    margin-right: 1em;
+    width: 100%;
 }
 .solution {
     border-style: none;
@@ -133,4 +197,24 @@
 }
 .solution-seat-name-container {
     height:0;    
+}
+.new-col-3 {
+    display: flex;
+    width: 30%;
+}
+.flex {
+    
+    display: flex;
+    flex-wrap: wrap;
+    min-height: 10%;
+    min-width: 10%;
+}
+
+
+.fill-half
+{
+    width: 50%;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
 }

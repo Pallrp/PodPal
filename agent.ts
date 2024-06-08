@@ -416,6 +416,11 @@ class Agent {
     maxSolutions:number;
     solutions:Array<State>;
     timeoutAt:number;
+    // staticstic
+    nodesExpanded:number;   // how many states are checked for expansion
+    nodesGenerated:number;  // how many states are generated
+    nodesSkipped:number;    // how many states are skipped due to already explored
+    goalsFound:number;      // how many goal states are generated
     constructor(heuristic:Heuristic, environment:Environment, maxSolutions:number) {
         this.heuristic = heuristic;
         this.env = environment;
@@ -424,6 +429,7 @@ class Agent {
         this.timeoutAt = Date.now() + TIMEOUT;
         this.unsortedPlayers = new Set();
         this.env.playersList.map((player) => {this.unsortedPlayers.add(player.id)});
+        this.nodesGenerated = this.goalsFound = this.nodesSkipped = this.nodesExpanded = 0;
     }
 
     addSolution(state:State) {
@@ -486,16 +492,22 @@ class AStarAgent extends Agent {
         while (this.frontier.peek() !== null) {
             // take out cheapest state known
             currentState = (this.frontier.remove() as State);
+            this.nodesExpanded ++;
 
-            if (this.env.isGoalState(currentState) && !(exploredStates.has(currentState.hash()))) {
-                // state has all players sorted, check if we've beat the record
-                stateScore = this.heuristic.evalState(currentState);
-                if (bestScore >= stateScore) {
-                    bestScore = stateScore;
-                    this.addSolution(currentState);
-                    exploredStates.add(currentState.hash());
+            if (this.env.isGoalState(currentState) ) {
+                this.goalsFound++;
+                if (!(exploredStates.has(currentState.hash()))) {
+                    // state has all players sorted, check if we've beat the record
+                    stateScore = this.heuristic.evalState(currentState);
+                    if (bestScore >= stateScore) {
+                        bestScore = stateScore;
+                        this.addSolution(currentState);
+                        exploredStates.add(currentState.hash());
+                    }
+                    this.checkTimeout();
+                } else {
+                    this.nodesSkipped++;
                 }
-                this.checkTimeout();
             } else if (!(exploredStates.has(currentState.hash()))) {
                 // add state to explored
                 exploredStates.add(currentState.hash());
@@ -509,8 +521,13 @@ class AStarAgent extends Agent {
                         //stateScore = this.heuristic.evalState(nextState);
                         // Add all states
                         this.frontier.add(nextState);
+                        this.nodesGenerated++;
+                    } else {
+                        this.nodesSkipped++;
                     }
                 }
+            } else {
+                this.nodesSkipped++;
             }
         }
     }
@@ -715,5 +732,11 @@ function doSearch(agentType:string) {
         newSolution(state.getSeats(), agent.heuristic.evalState(state));
     }
     console.log(agent.solutions.length + " solutions found");
+    console.log(
+        "Nodes generated: ", agent.nodesGenerated,
+        " Nodes expanded: ", agent.nodesExpanded,
+        " Nodes skipped", agent.nodesSkipped,
+        " Total goal nodes: ", agent.goalsFound
+    );
     // return multiple solutions, maybe add a solution to the DOM each time a solution is found?
 }
