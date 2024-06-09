@@ -39,14 +39,34 @@ Compiling the code works as follows:
 
 # TODOS:
 
-    Add/Remove pod after pairing
+    #1 Add/Remove pod after pairing
         There should always be an interactive setup for pairings, even before sorting
         It should be possible to add a pod to the setup, representing a new empty table
         It should also be possible to remove a pod that's been added
             NOTE: removing a pod should relocate each player in the pod to the unpaired
                 section
 
-    Heuristic selection from play history
+    #2 Saving a solution (as is)
+        It should be possible to add the currently staged solution to a (slightly) persisted
+        solutions list.
+        NOTE: persisted has little meaning since the page is entirely static,
+            This list should only need to persist over searches, i.e. calling the search will not
+            reset this list.
+        Since the solutions mostly re-use players from the added player list, it should be expected
+        that removed players from previous searches can be referenced. In this case a visual error
+        instead of the removed players' name will suffice.
+        This list should also be somewhat manage-able, meaning saved solutions should be removable from it.
+
+    #3 Re-evaluate score of a staged solution
+        There should be a button to re-evaluate the score after changing a staged solution.
+        This button should change the score in the header of the stage, but importantly not the recent
+        solutions list. It needs to be possible to revert to the original solution before changes.
+
+    #4 Autosave functionality for changing staged
+        This issue is only possible after #2 and #3.
+        Changing a staged solution for the first time will add a new persisted "saved" solution
+
+    #5 Heuristic selection from play history
         Keep track of players that have played with eachother
         This can be from import/exporting file or other methods
-        The PodSorter should try pair people that have played least together 
+        The PodSorter should try pair people that have played least together.

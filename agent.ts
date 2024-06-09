@@ -152,13 +152,13 @@ class Heuristic {
                 Two blacklisted players are discouraged to be podded, regardless of a power difference
                 they will be moved to a pod with differing powerlevel
     */
-    POWERDIFF:number = 15;          // Cost for level higher power that exist if theres a lower power in the pod
-                                    // Each level higher adds a multiplicative score for each player that's lower
-                                    // (1 level diff = 1*players lower, 2 levels diff = 2* players lower)
-    WHITELIST:number = 0;           // Cost for Whitelist players are at same table
+    POWERIMBALANCE:number = 10      // Cost for power imbalance that exist if theres a lower power in the pod.
+                                    // This score is additive for each player that's lower level.
+                                    // i.e., 3 players of low level with 1 higher level will add 3x score.
+    POWERDIFF:number = 0.1;           // Cost for each power that's missing out of another players list
     BLACKLIST:number = 50;          // Cost for Blacklisted players are at same table
-    EMPTYSEAT:number = 10;           // Cost for each empty seat on a table
-    UNSEATED:number = 1;           // Encouragement cost -- try get the AI to check results that are closer to the goal 
+    EMPTYSEAT:number = 30;          // Cost for each empty seat on a table
+    UNSEATED:number = 1;            // Encouragement cost -- try get the AI to check results that are closer to the goal 
     // SEAT:number = // Cost for seating a player TODO: do we need this?
 
     maxPlayers:number;
@@ -182,8 +182,8 @@ class Heuristic {
         let lowestN:Array<number> = [];
         let n = PLAYERS[playerArr[0]].power.size;
         for (let p of playerArr) {
-            if (PLAYERS[p].hasWhitelist() ||PLAYERS[p].hasBlacklist()) {
-                // least branches from list players
+            if (PLAYERS[p].hasWhitelist() || PLAYERS[p].hasBlacklist()) {
+                // least branching from list players
                 return PLAYERS[p];
             }
             if (PLAYERS[p].power.size == n) {
@@ -220,7 +220,7 @@ class Heuristic {
         var player1:Player,
             player2:Player,
             tableScore:number,
-            powerDiff:number,
+            powerImbalance:number,
             totalPowerDiff:number;
         // search for black- & whitelist + differing powerlevels
         for (var table of state.tables) {
@@ -230,29 +230,29 @@ class Heuristic {
                 // add score for each empty seat
                 tableScore += (MAXSEATS - table.seats.size()) * this.EMPTYSEAT;
 
-                for (let playerId1 of table.seats.heap) {
-                    player1 = PLAYERS[playerId1];
-                    for (let playerId2 of table.seats.heap) {
-                        if (playerId1 != playerId2) {
-                            player2 = PLAYERS[playerId2];
-                            // take difference in powerlevel
-                            if (player1.whitelist.has(player2.id)) {
-                                continue; // powerdiff has no effect on whitelist
+                for (let i = 0; i < table.seatedPlayers(); i++) {
+                    player1 = PLAYERS[table.seats.heap[i]];
+                    for (let j = i; j < table.seatedPlayers(); j++) {
+                        player2 = PLAYERS[table.seats.heap[j]];
+                        // take difference in powerlevel
+                        if (player1.whitelist.has(player2.id)) {
+                            continue; // powerdiff has no effect on whitelist
+                        }
+                        for (let pow of player1.power) {
+                            if (!player2.power.has(pow)) {
+                                totalScore += this.POWERDIFF;
                             }
-                            if (player2.power.has(player1.lowestPower)) {
-                                continue; // player can compete here, no need to check for power mismatch
-                            }
-                            // there's a power mismatch, count all (higher - lower) instances
-                            powerDiff = player1.lowestPower - player2.lowestPower;
-                            if (powerDiff > 0) {
-                                // we're more concerned with higher power pubstomping rather
-                                // than lower power -- 3 low & 1 high will be counted 3 times to totalPowerDiff
-                                totalPowerDiff += powerDiff;
-                            }
+                        }
+                        // there's a power mismatch, count all (higher - lower) instances
+                        powerImbalance = Math.abs(player1.lowestPower - player2.lowestPower);
+                        if (powerImbalance > 0) {
+                            // we're more concerned with higher power pubstomping rather
+                            // than lower power -- 3 low & 1 high will be counted 3 times to totalPowerDiff
+                            totalPowerDiff += powerImbalance;
                         }
                     }
                     // add powerdiff multiplier to score
-                    tableScore += Math.round(totalPowerDiff * this.POWERDIFF);
+                    tableScore += Math.round(totalPowerDiff * this.POWERIMBALANCE);
                     // check lists
                     if (player1.hasBlacklist()) {
                         if(table.containsBlackList(player1)) {
@@ -269,7 +269,6 @@ class Heuristic {
         this.hashmap[stateHash] = totalScore;
         return totalScore;
     }
-    
 }
 
 class Environment {
@@ -486,7 +485,7 @@ class AStarAgent extends Agent {
                 if (!(exploredStates.has(currentState.hash()))) {
                     // state has all players sorted, check if we've beat the record
                     stateScore = this.heuristic.evalState(currentState);
-                    if (bestScore >= stateScore) {
+                    if (bestScore > stateScore) {
                         bestScore = stateScore;
                         this.addSolution(currentState);
                         exploredStates.add(currentState.hash());
@@ -537,16 +536,17 @@ class Table {
     }
 
     seatPlayer(playerId:number) {
-        this.seats.add(playerId);
-        if (PLAYERS[playerId].hasWhitelist()) {
-            for (let listplayer of PLAYERS[playerId].whitelist) {
-                this.seats.add(listplayer);
+        if (PLAYERS[playerId]) {
+            for (let listPlayerId of PLAYERS[playerId].getPlayPod()) {
+                this.seats.add(listPlayerId);
             }
         }
     }
-
+    /*
+        Returns True if table is completely empty, or there is spot for a player (and his whitelist)
+    */
     canSeat(playerId:number) : boolean {
-        return (this.seats.size() + PLAYERS[playerId].seatSize()) <= MAXSEATS;
+        return (this.seats.size()) == 0 || (this.seats.size() + PLAYERS[playerId].seatSize()) <= MAXSEATS;
     }
 
     containsList(player:Player, listAttr:string) : boolean {
@@ -584,6 +584,7 @@ class Player {
     blacklist:Set<number>;
     hashValue:number;
     lowestPower:number;
+    whitelistChain:Array<number>;
 
     constructor(id:number, name:string, power:Set<number>) {
         this.id = id;
@@ -595,6 +596,7 @@ class Player {
         this.lowestPower = (Array.from(this.power).reduce(
             (prev, curr) => {return prev < curr ? prev : curr;}, Infinity
         ));
+        this.whitelistChain = [];
     }
 
     /* Sets the whitelist variable as the set or iterable */
@@ -606,11 +608,48 @@ class Player {
     setBlacklist(blacklist:Set<number>) {
         this.blacklist = blacklist;
     }
+    /*
+        Returns the total number of player this player occupies
+        (and his whitelist chain)
+    */
     seatSize() : number {
         if (this.hasWhitelist()) {
-            return this.whitelist.size + 1;
+            return this.getPlayPod().length + 1;
         }
         return 1;
+    }
+    /*
+        Recursively call #chainRecursive() of all players that have not been added
+        to the current chain, sets the #whitelistChain for future calls
+    */
+    chainRecursive(chain:Array<number>, added:Set<number>) : void {
+        for (let playerId of this.whitelist) {
+            if (added.has(playerId)) {
+                continue;
+            } else {
+                // player wasnt added before, add him and call his recursive cotinuation
+                chain.push(playerId);
+                added.add(playerId);
+                PLAYERS[playerId].chainRecursive(chain, added);
+            }
+        }
+        // after resolving the whole depth of the chain, all Players of the chain
+        // will be assigned the same variable so future calls of getPlayPod() yield the same results
+        this.whitelistChain = chain;
+    }
+    /*
+        Returns all players that this player has whitelist
+        (and iteratively all whitelists they have to themselves)
+        The return array is inclusive of the player it was called from.
+    */
+    getPlayPod() : Array<number> {
+        if (this.whitelistChain.length > 0) {
+            return this.whitelistChain;
+        }
+        var added:Set<number> = new Set([this.id]);
+        var whitelistchain:Array<number> = [this.id];
+        this.chainRecursive(whitelistchain, added);
+        return this.whitelistChain;
     }
 
     hasWhitelist():boolean {
@@ -669,7 +708,9 @@ function collectPlayers():Array<Player> {
         }
         returnList.push(PLAYERS[playerId]);
         if (PLAYERS[playerId].hasWhitelist()) {
-            for (let listplayer of PLAYERS[playerId].whitelist) {
+            // add all players of this players whitelist chain so they are not considered
+            // different from eachother when sorting the pods
+            for (let listplayer of PLAYERS[playerId].getPlayPod()) {
                 addedPlayers.add(listplayer);
             }
         }
