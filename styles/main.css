@@ -157,9 +157,9 @@ label {
 }
 
 #players-container {
-    max-height: 40rem;
     overflow-y: scroll;
     overflow-x: clip;
+    max-height: 40rem;
 }
 
 .solution-seats-container {
@@ -270,12 +270,12 @@ label {
 .player-signup-container {
     overflow: hidden;
 }
-/*
+
 .hideable {
-    animation:
+    transition: max-height 0.5s;
 }
-*/
+
 
 .hide {
-    height: 0px !important;
+    max-height: 0px !important;
 }

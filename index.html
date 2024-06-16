@@ -48,60 +48,63 @@
                 <div id="top-container" class="col">
                     <div id="players-added-container" class="text-center player-signup-container">
                         <h2>Signup</h2>
+                        <button type="button" class="collapse-controller" data-target-id="players-container">
+                            ^
+                        </button>
                         <div class="row player-header" id="player-header">
                             <div class="col-5">Name</div>
                             <div class="col-2">Power</div>
                             <div class="col-2"></div>
                         </div>
-                        <div id="players-container" class="col"></div>
+                        <div id="players-container" class="col hideable"></div>
                     </div>
                 </div>
-                
-                <div class="d-none">
-                    <div id="player-container-template" class="player-container-instance row my-1">
-                        <span class="player-name-container col-6">
-                            <p class="player-name m-0">??</p>
-                        </span>
-                        <span class="col-3 player-power-container p-0" value="err">
-                        </span>
-                        <button class="col-1 blacklistbutton listbutton" type="button">BL</button>
-                        <button class="col-1 whitelistbutton listbutton" type="button">WL</button>
-                        <span class="col-1 player-rm-container">
-                            <button type="button" class="rm-player-btn btn-remove">
-                                X
-                            </button>
-                        </span>
-                        <div class="d-none blacklist-container listcontainer row">
-                            <div class="col-1 white"></div>
-                            <div class="col-11">
-                                <div class="blacklist listcontainer-inner">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="d-none whitelist-container listcontainer row">
-                            <div class="col-1 white"></div>
-                            <div class="col-11">
-                                <div class="whitelist listcontainer-inner">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div id="power-pill-template" class="powerpill" value="err"></div>
-                    <div id="list-template" value="err">
-                        <button type="button" class="rm-list-btn">X</button>
-                        <span class="player-list-name ps-3">Error</span>
+            </div>
+            <div class="row">
+                <div class="col-10">
+                    <h3 id="solution-number"></h3>
+                    <div id="staged-solution" class="flex">
                     </div>
                 </div>
-                <div class="row">
-                    <div class="col-10">
-                        <h3 id="solution-number"></h3>
-                        <div id="staged-solution" class="flex">
+                <div class="col-2">
+                    <div id="solutions-area" class="solutions-area">
+                    </div>
+                </div>
+            </div>
+
+            <div id="templates" class="d-none">
+                <div id="player-container-template" class="player-container-instance row my-1">
+                    <span class="player-name-container col-6">
+                        <p class="player-name m-0">??</p>
+                    </span>
+                    <span class="col-3 player-power-container p-0" value="err">
+                    </span>
+                    <button class="col-1 blacklistbutton listbutton" type="button">BL</button>
+                    <button class="col-1 whitelistbutton listbutton" type="button">WL</button>
+                    <span class="col-1 player-rm-container">
+                        <button type="button" class="rm-player-btn btn-remove">
+                            X
+                        </button>
+                    </span>
+                    <div class="d-none blacklist-container listcontainer row">
+                        <div class="col-1 white"></div>
+                        <div class="col-11">
+                            <div class="blacklist listcontainer-inner">
+                            </div>
                         </div>
                     </div>
-                    <div class="col-2">
-                        <div id="solutions-area" class="solutions-area">
+                    <div class="d-none whitelist-container listcontainer row">
+                        <div class="col-1 white"></div>
+                        <div class="col-11">
+                            <div class="whitelist listcontainer-inner">
+                            </div>
                         </div>
                     </div>
+                </div>
+                <div id="power-pill-template" class="powerpill" value="err"></div>
+                <div id="list-template" value="err">
+                    <button type="button" class="rm-list-btn">X</button>
+                    <span class="player-list-name ps-3">Error</span>
                 </div>
             </div>
             <div id="bottom-container" class="row">

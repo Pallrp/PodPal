@@ -24,6 +24,7 @@ function loadPage() : void {
     addButtonEvents();
     bindSearch();
     addFormBehaviour();
+    addToggleToButtons();
 
     addPlayer("Actual Brainrot", [Powerlevel.MID, Powerlevel.CASUAL]);
     addPlayer("Bruhman Lower", [Powerlevel.MID, Powerlevel.MIDHIGH]);
@@ -53,6 +54,27 @@ function addFormBehaviour() {
         playerNameInput.focus();
     });
 }
+
+function addToggleToButtons() {
+    let buttons:HTMLCollectionOf<Element> = document.getElementsByClassName('collapse-controller');
+    for (let btn of buttons) {
+        btn.addEventListener("click", toggleHide);
+    }
+}
+
+function toggleHide(event:Event) {
+    /*
+        Toggles the hide class of elements the button is targetting via data-target-id
+        NOTE: to display animations, the elements must have the max-height attribute set    
+    */
+    let btn = (event.target as HTMLButtonElement);
+    let target = btn.getAttribute('data-target-id');
+    if (target !== null) {
+        let collapse = document.getElementById(target);
+        collapse?.classList.toggle('hide');
+    }
+}
+
 function clearForm(formId:string) : void {
     let form = document.getElementById(formId);
     if (form !== null) {
