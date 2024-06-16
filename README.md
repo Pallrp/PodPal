@@ -49,4 +49,8 @@ Compiling the code works as follows:
     Heuristic selection from play history
         Keep track of players that have played with eachother
         This can be from import/exporting file or other methods
-        The PodSorter should try pair people that have played least together 
+        The PodSorter should try pair people that have played least together
+
+    Primary Pick & Secondary picks
+        Players should have primary and secondary picks on powerlevel.
+        If the primary doesn't match the pod, there should be a slight score modifier.

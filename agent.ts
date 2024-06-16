@@ -624,6 +624,7 @@ class Player {
         return this.hashValue;
     }
 }
+
 function getList(listtype:string, playerEl:Element) : Array<number>{
     var nodeList = playerEl.querySelector("." + listtype);
     var returnArr:Array<number> = [];
@@ -639,6 +640,7 @@ function getList(listtype:string, playerEl:Element) : Array<number>{
     }
     return returnArr;
 }
+
 /* Returns a list of all added players, instantiated in a list of Player classes */
 function collectPlayers():Array<Player> {
     let playersContainer = (document.getElementById('players-container') as HTMLElement);
@@ -666,6 +668,7 @@ function collectPlayers():Array<Player> {
     }));
     return playersList;
 }
+
 // HELPER FUNCTIONS
 function playernameSort(a:number, b:number) :number {
     if (PLAYERS[a].name < PLAYERS[b].name) {
@@ -702,6 +705,7 @@ function addValToDictSet(dictObj:Record<number, Set<number>>, key:number, value:
     dictObj[key].add(value);
     return added;
 }
+
 // MAIN FUNCTION
 function doSearch(agentType:string) {
     let players = collectPlayers();

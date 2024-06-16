@@ -10,54 +10,59 @@
     </head>
     <body>
         <div class="container">
-            <div id="top-container" class="col">
-                <div id="form-container" class="flex">
-                    <form id="add-player-form" class="fill-half">
-                        <div class="form-container-content" >
-                            <label for="add-player-name">Player Name</label>
-                            <input id="add-player-name" type="text" name="input-player-name">
-                        </div>
-                        <div class="form-container-content col mt-3">
-                            <div>
-                                <label for="add-player-power">Power Level</label>
+            <div class="row">
+                <div class="col-4">
+                    <div class="row" id="form-container">
+                        <form id="add-player-form" class="fill-half">
+                            <div class="form-container-content">
+                                <label for="add-player-name">Player Name</label>
+                                <input id="add-player-name" type="text" name="input-player-name">
                             </div>
-                            <!-- populated in main -->
-                            <select name="input-player-power" id="add-player-power" multiple></select> <!-- TODO: add support for multiple-->
-                            <div>
-                                <button id="submit-player" type="button">
-                                    Add Player
-                                </button>
+                            <div class="form-container-content col mt-3">
+                                <div>
+                                    <label for="add-player-power">Power Level</label>
+                                </div>
+                                <!-- populated in main -->
+                                <select name="input-player-power" id="add-player-power" multiple></select> <!-- TODO: add support for multiple-->
+                                <div>
+                                    <button id="submit-player" type="button">
+                                        Add Player
+                                    </button>
+                                </div>
                             </div>
+                        </form>
+                    </div>
+                    <div clas="row">
+                        <div class="text-center table-order">
+                            <h2>Table ordering</h2>
+                            <button type="button" class="search-btn" id="activate-search-agent">
+                                <span id="search-title">Cook</span>
+                            </button>
+                            <button type="button" class="search-btn" id="activate-random-agent">
+                                <span id="search-title">Shuffle</span>
+                            </button>
+                            <img id="loading-spinner" class="loader d-none" src="media/circle.png" alt="manasymbols"/>
                         </div>
-                    </form>
-                    <div class="text-center align-content-center w-50 table-order">
-                        <h2>Table ordering</h2>
-                        <button type="button" class="search-btn" id="activate-search-agent">
-                            <span id="search-title">Cook</span>
-                        </button>
-                        <button type="button" class="search-btn" id="activate-random-agent">
-                            <span id="search-title">Shuffle</span>
-                        </button>
-                        <img id="loading-spinner" class="loader d-none" src="media/circle.png" alt="manasymbols"/>
                     </div>
                 </div>
-                <div id="players-added-container" class="col mx-1">
-                    <h2>Signup</h2>
-                    <div class="row player-header" id="player-header">
-                        <div class="col-5">Name</div>
-                        <div class="col-2">Power</div>
-                        <div class="col-2"></div>
-                    </div>
-                    <div id="players-container" class="col">
-                    
+                <div id="top-container" class="col">
+                    <div id="players-added-container" class="text-center player-signup-container">
+                        <h2>Signup</h2>
+                        <div class="row player-header" id="player-header">
+                            <div class="col-5">Name</div>
+                            <div class="col-2">Power</div>
+                            <div class="col-2"></div>
+                        </div>
+                        <div id="players-container" class="col"></div>
                     </div>
                 </div>
+                
                 <div class="d-none">
-                    <div id="player-container-template" class="player-container-instance row d-flex my-1">
+                    <div id="player-container-template" class="player-container-instance row my-1">
                         <span class="player-name-container col-6">
-                            <p class="ps-2 player-name m-0">??</p>
+                            <p class="player-name m-0">??</p>
                         </span>
-                        <span class="col-3 player-power-container" value="err">
+                        <span class="col-3 player-power-container p-0" value="err">
                         </span>
                         <button class="col-1 blacklistbutton listbutton" type="button">BL</button>
                         <button class="col-1 whitelistbutton listbutton" type="button">WL</button>
@@ -87,8 +92,6 @@
                         <span class="player-list-name ps-3">Error</span>
                     </div>
                 </div>
-            </div>
-            <div id="bottom-container" class="row">
                 <div class="row">
                     <div class="col-10">
                         <h3 id="solution-number"></h3>
@@ -100,8 +103,10 @@
                         </div>
                     </div>
                 </div>
+            </div>
+            <div id="bottom-container" class="row">
                 <div class="d-none">
-                    <div id="solution-table-template" class="new-col-3 m-1">
+                    <div id="solution-table-template" class="col-3 m-1">
                         <div class="solution-seats-container">
                         </div>
                     </div>

@@ -25,26 +25,26 @@ function loadPage() : void {
     bindSearch();
     addFormBehaviour();
 
-    addPlayer("Actual Brainrot", [Powerlevel.MEDIUM, Powerlevel.CASUAL]);
-    addPlayer("Bruhman Lower", [Powerlevel.MEDIUM]);
+    addPlayer("Actual Brainrot", [Powerlevel.MID, Powerlevel.CASUAL]);
+    addPlayer("Bruhman Lower", [Powerlevel.MID, Powerlevel.MIDHIGH]);
     addPlayer("Chad.", [Powerlevel.COMP, Powerlevel.HIGH]);
     addPlayer("Flip", [Powerlevel.COMP, Powerlevel.HIGH]);
-    addPlayer("Chud", [Powerlevel.COMP, Powerlevel.MEDIUM, Powerlevel.CASUAL, Powerlevel.HIGH]);
-    addPlayer("John Doe", [Powerlevel.MEDIUM, Powerlevel.CASUAL]);
-    addPlayer("John Die", [Powerlevel.MEDIUM]);
-    addPlayer("John Deo", [Powerlevel.MEDIUM, Powerlevel.CASUAL]);
-    addPlayer("John Don", [Powerlevel.MEDIUM]);
-    addPlayer("Average Player (Derogatory)", [Powerlevel.MEDIUM]);
+    addPlayer("Chud", [Powerlevel.COMP, Powerlevel.MID, Powerlevel.CASUAL, Powerlevel.HIGH]);
+    addPlayer("John Doe", [Powerlevel.MID, Powerlevel.CASUAL]);
+    addPlayer("John Die", [Powerlevel.MID]);
+    addPlayer("John Deo", [Powerlevel.HIGH, Powerlevel.CASUAL]);
+    addPlayer("John Don", [Powerlevel.MIDHIGH]);
+    addPlayer("Average Player (Derogatory)", [Powerlevel.MIDHIGH]);
     addPlayer("John Rizzman", [Powerlevel.COMP]);
     addPlayer("Abram", [Powerlevel.COMP]);
-    addPlayer("Skipper", [Powerlevel.HIGH, Powerlevel.MEDIUM]);
+    addPlayer("Skipper", [Powerlevel.HIGH, Powerlevel.MIDHIGH]);
     addPlayer("Maximus Timmy", [Powerlevel.CASUAL]);
-    addPlayer("Scrat", [Powerlevel.HIGH, Powerlevel.MEDIUM]);
-    addPlayer("Scrut", [Powerlevel.HIGH, Powerlevel.MEDIUM]);
-    addPlayer("Skibidi", [Powerlevel.HIGH, Powerlevel.MEDIUM]);
+    addPlayer("Scrat", [Powerlevel.HIGH, Powerlevel.MIDHIGH, Powerlevel.MID]);
+    addPlayer("Scrut", [Powerlevel.HIGH, Powerlevel.MIDHIGH]);
+    addPlayer("Skibidi", [Powerlevel.HIGH, Powerlevel.MIDHIGH, Powerlevel.MID]);
     addPlayer("Zoomer Zubar", [Powerlevel.CASUAL]);
     addPlayer("Casual", [Powerlevel.CASUAL]);
-    addPlayer("Filthy Casual", [Powerlevel.CASUAL]);
+    addPlayer("Filthy Casual", [Powerlevel.CASUAL, Powerlevel.MID]);
 }
 function addFormBehaviour() {
     document.getElementById('add-player-form')?.addEventListener("submit", (e) => {
@@ -105,9 +105,10 @@ function addPowerSelections() : void {
 
 const Powerlevel = {
     CASUAL: 1,
-    MEDIUM: 2,
-    HIGH: 3,
-    COMP: 4
+    MID: 2,
+    MIDHIGH: 3,
+    HIGH: 4,
+    COMP: 5,
 };
 
 function getPowerClass(powerLevel:number) : string {
@@ -115,7 +116,8 @@ function getPowerClass(powerLevel:number) : string {
     let level = "";
     switch (powerLevel) {
         case (Powerlevel.CASUAL):   level = "casual";   break;
-        case (Powerlevel.MEDIUM):   level = "medium";   break;
+        case (Powerlevel.MID):      level = "medium";   break;
+        case (Powerlevel.MIDHIGH):  level = "midhigh";  break;
         case (Powerlevel.HIGH):     level = "high";     break;
         case (Powerlevel.COMP):     level = "comp";     break;
         default:                    level = "err";      break;
@@ -126,11 +128,12 @@ function getPowerClass(powerLevel:number) : string {
 function getPowerVerboseName(powerLevel:number) : string {
     let powerStr = ""
     switch (powerLevel) {
-        case (Powerlevel.CASUAL):   powerStr = "Casual"; break;
-        case (Powerlevel.MEDIUM):   powerStr = "Medium";        break;
-        case (Powerlevel.HIGH):     powerStr = "High";          break;
-        case (Powerlevel.COMP):     powerStr = "CEDH";          break;
-        default:                    powerStr = "Error";         break;
+        case (Powerlevel.CASUAL):   powerStr = "Casual";    break;
+        case (Powerlevel.MID):      powerStr = "Mid";       break;
+        case (Powerlevel.MIDHIGH):  powerStr = "Mid/High";  break;
+        case (Powerlevel.HIGH):     powerStr = "High";      break;
+        case (Powerlevel.COMP):     powerStr = "CEDH";      break;
+        default:                    powerStr = "Error";     break;
     }
     return powerStr;
 }
