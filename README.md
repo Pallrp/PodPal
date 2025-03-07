@@ -23,7 +23,24 @@ Technical explanation of the ordering process:
     within a table are not unique, and neither are tables, the search tree is reduced to pow(N - 4).
     The complete size of the search space lies around C(N, N-4)
 ```
-
+Structure of the project:
+* main.ts: contains the main logic for the project
+* agent.ts: contains the logic for the search agents
+* html: contains the html for the project
+* styles: contains the styles for the project
+* media: contains the media for the project
+```
+/Users/raggi/code/personal/PodPal
+.
+├── README.md
+├── agent.ts
+├── index.html
+├── main.ts
+├── media
+│   └── circle.png
+└── styles
+    └── main.css
+```
 
 ## Setup
 This project develops the javascript code used in the html document using typescript via the typescript compiler.

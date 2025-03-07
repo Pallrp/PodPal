@@ -1,0 +1,33 @@
+Name,CEDH,High,Mid,Casual,Blacklist,Whitelist
+"CEDH Player 1",true,false,false,false,,
+"CEDH Player 2",true,false,false,false,,
+"CEDH Player 3",true,false,false,false,,
+"CEDH Player 4",true,false,false,false,,
+"High Player 1",false,true,false,false,,
+"High Player 2",false,true,false,false,,
+"High Player 3",false,true,false,false,,
+"High Player 4",false,true,false,false,,
+"Mid Player 1",false,false,true,false,,
+"Mid Player 2",false,false,true,false,,
+"Mid Player 3",false,false,true,false,,
+"Mid Player 4",false,false,true,false,,
+"James Wilson",false,true,true,false,,"Sarah Davis,Michael Brown,Emma Jones,David Miller"
+"Sarah Davis",false,true,true,false,,"James Wilson,Michael Brown,Emma Jones,David Miller"
+"Michael Brown",true,true,false,false,,"James Wilson,Sarah Davis,Emma Jones,David Miller"
+"Emma Jones",false,true,true,false,,"James Wilson,Sarah Davis,Michael Brown,David Miller"
+"David Miller",false,false,true,true,,"James Wilson,Sarah Davis,Michael Brown,Emma Jones"
+"Robert Taylor",true,false,false,false,"Chris Anderson,Lisa White",
+"Lisa White",false,true,true,false,"Robert Taylor,Thomas Martin",
+"Chris Anderson",false,false,true,true,"Robert Taylor,Jennifer Clark",
+"Jennifer Clark",true,true,false,false,"Chris Anderson,Thomas Martin",
+"Thomas Martin",false,true,false,true,"Lisa White,Jennifer Clark",
+"Alice Cooper",true,true,true,false,,
+"Bob Dylan",false,true,true,true,,
+"Carol Smith",true,false,true,false,,
+"Dan Brown",false,false,true,true,,
+"Eve Johnson",true,true,false,true,,
+"Frank Ocean",false,true,false,true,,
+"Grace Lee",true,false,true,true,,
+"Henry Ford",false,true,true,false,,
+"Iris West",true,true,false,false,,
+"Jack Black",false,false,true,true,,
