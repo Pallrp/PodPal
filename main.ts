@@ -163,6 +163,10 @@ function getPowerVerboseName(powerLevel:number) : string {
 function removePlayer(playerId:string) : void {
     let p = (document.getElementById(playerId) as HTMLElement);
     let listId = getListId(p);
+    // remove all white/black list pairs
+    p.querySelectorAll('.rm-list-btn').forEach((el) => {
+        (el as HTMLElement).click();
+    })
     // remove player
     p.remove();
     // remove all list elements
@@ -395,7 +399,9 @@ function dragListPlayer(event:DragEvent) : void {
 
 var Solutions:Array<Array<Array<number>>> = [];
 var solutionScores:Array<number> = [];
+
 function newSolution(seatings:Array<Array<number>>, score:number) : void {
+    score = Math.round(score);
     Solutions.push(seatings);
     solutionScores.push(score);
     let i:number = Solutions.length - 1;
@@ -523,7 +529,7 @@ function newSearch(agent:string) : void {
             console.error(e);
         }
         toggleLoad();
-    });
+    }, 2);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
