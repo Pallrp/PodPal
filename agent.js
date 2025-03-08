@@ -4,14 +4,7 @@ const TIMEOUT = 20000;
 const MAXSEATS = 4;
 const MAXSOLUTIONS = 10;
 // id -> Player dictionary for all players
-var PLAYERS:Record<number, Player> = {};
-// TODO: async
-
-// Reference to the feedback toast function defined in main.ts
-declare function showFeedbackToast(message: string, isError: boolean): void;
-// Reference to the play history indicator update function defined in main.ts
-declare function updatePlayHistoryIndicators(): void;
-
+var PLAYERS = {};
 // Track search progress for UI feedback
 var searchProgress = {
     nodesExpanded: 0,
@@ -21,69 +14,37 @@ var searchProgress = {
     bestScore: Infinity,
     progressPercent: 0
 };
-
-// #### Configurable weights for heuristic evaluation ####
-interface HeuristicWeights {
-    powerImbalance: number;  // Cost for power imbalance that exist if there's a lower power in the pod
-    powerDiff: number;       // Cost for each power that's missing out of another players list
-    blacklist: number;       // Cost for blacklisted players at same table
-    emptySeat: number;       // Cost for each empty seat on a table
-    unseated: number;        // Encouragement cost -- try to get the AI to check results closer to goal
-    playHistory: number;     // Cost for pairing players who have played together frequently
-    powerDiversity: number;  // NEW: Cost for having different power levels at the same table
-}
-
 // Default weights
-const DEFAULT_WEIGHTS: HeuristicWeights = {
-    powerImbalance: 50,  // Increased from 10 to 50 to strongly discourage power mismatches
-    powerDiff: 1.5,      // Increased from 0.1 to 1.5 to heavily penalize non-overlapping power levels
-    blacklist: 100,      // Increased from 50 to 100 to make blacklists even more important
-    emptySeat: 10,       // Reduced from 30 to 10 to prefer fuller tables of same power level
+const DEFAULT_WEIGHTS = {
+    powerImbalance: 50, // Increased from 10 to 50 to strongly discourage power mismatches
+    powerDiff: 1.5, // Increased from 0.1 to 1.5 to heavily penalize non-overlapping power levels
+    blacklist: 100, // Increased from 50 to 100 to make blacklists even more important
+    emptySeat: 10, // Reduced from 30 to 10 to prefer fuller tables of same power level
     unseated: 1,
-    playHistory: 3,       // Reduced slightly to prioritize power matching over play history
-    powerDiversity: 40   // High penalty for tables with multiple power levels
+    playHistory: 3, // Reduced slightly to prioritize power matching over play history
+    powerDiversity: 40 // High penalty for tables with multiple power levels
 };
-
-// Player play history tracking
-interface PlayHistory {
-    [playerId: number]: {
-        [otherPlayerId: number]: number;  // Number of times played together
-    };
-}
-
-let playerPlayHistory: PlayHistory = {};
-
-// Define a fallback solution interface to help with type checking
-interface FallbackSolution {
-    seatings: Array<Array<number>>;
-    score: number;
-}
-
-// Define a union type for solutions that can be either State objects or FallbackSolutions
-type Solution = State | FallbackSolution;
-
+let playerPlayHistory = {};
 // Function to track players who have played together
-function recordPlayedTogether(seatings: Array<Array<number>>) {
+function recordPlayedTogether(seatings) {
     // Skip if seatings is undefined or not an array
     if (!seatings || !Array.isArray(seatings)) {
         console.warn("Invalid seatings provided to recordPlayedTogether", seatings);
         return;
     }
-    
     try {
         seatings.forEach(table => {
             // Skip if table is not an array
-            if (!Array.isArray(table)) return;
-            
+            if (!Array.isArray(table))
+                return;
             // For each pair of players at this table, record that they played together
             for (let i = 0; i < table.length; i++) {
                 for (let j = i + 1; j < table.length; j++) {
                     const playerId1 = table[i];
                     const playerId2 = table[j];
-                    
                     // Skip invalid player IDs
-                    if (playerId1 === undefined || playerId2 === undefined) continue;
-                    
+                    if (playerId1 === undefined || playerId2 === undefined)
+                        continue;
                     // Initialize histories if they don't exist
                     if (!playerPlayHistory[playerId1]) {
                         playerPlayHistory[playerId1] = {};
@@ -91,41 +52,39 @@ function recordPlayedTogether(seatings: Array<Array<number>>) {
                     if (!playerPlayHistory[playerId2]) {
                         playerPlayHistory[playerId2] = {};
                     }
-                    
                     // Increment play count
                     playerPlayHistory[playerId1][playerId2] = (playerPlayHistory[playerId1][playerId2] || 0) + 1;
                     playerPlayHistory[playerId2][playerId1] = (playerPlayHistory[playerId2][playerId1] || 0) + 1;
                 }
             }
         });
-        
         // Save to localStorage for persistence
         localStorage.setItem('playerPlayHistory', JSON.stringify(playerPlayHistory));
-    } catch (error) {
+    }
+    catch (error) {
         console.error("Error in recordPlayedTogether:", error);
         // Don't throw the error, just log it
     }
 }
-
 // Load play history from localStorage if available
 function loadPlayHistory() {
     const savedHistory = localStorage.getItem('playerPlayHistory');
     if (savedHistory) {
         try {
             playerPlayHistory = JSON.parse(savedHistory);
-        } catch (e) {
+        }
+        catch (e) {
             console.error('Error parsing play history:', e);
             playerPlayHistory = {};
         }
     }
 }
-
 // Call this function when the page loads
 function initPlayHistory() {
+    var _a;
     loadPlayHistory();
-    
     // Trigger history visualization update if the modal is open
-    if (document.getElementById('history')?.classList.contains('active')) {
+    if ((_a = document.getElementById('history')) === null || _a === void 0 ? void 0 : _a.classList.contains('active')) {
         // Wait for DOM to be ready
         requestAnimationFrame(() => {
             if (typeof updateHistoryVisualization === 'function') {
@@ -134,72 +93,62 @@ function initPlayHistory() {
         });
     }
 }
-
 // Utility to clear play history
 function clearPlayHistory() {
     playerPlayHistory = {};
     localStorage.removeItem('playerPlayHistory');
 }
-
 // Export play history to a file
 function exportPlayHistory() {
     const data = JSON.stringify(playerPlayHistory, null, 2);
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
-    
     const a = document.createElement('a');
     a.href = url;
     a.download = 'play_history.json';
     a.click();
-    
     URL.revokeObjectURL(url);
 }
-
 // Import play history from a file
-function importPlayHistory(file: File) {
+function importPlayHistory(file) {
     const reader = new FileReader();
     reader.onload = (e) => {
+        var _a;
         try {
-            const importedHistory = JSON.parse(e.target?.result as string);
-            
+            const importedHistory = JSON.parse((_a = e.target) === null || _a === void 0 ? void 0 : _a.result);
             // Merge with existing history
             for (const playerId in importedHistory) {
                 if (!playerPlayHistory[playerId]) {
                     playerPlayHistory[playerId] = {};
                 }
-                
                 for (const otherPlayerId in importedHistory[playerId]) {
                     const currentCount = playerPlayHistory[playerId][otherPlayerId] || 0;
                     const importedCount = importedHistory[playerId][otherPlayerId];
                     playerPlayHistory[playerId][otherPlayerId] = currentCount + importedCount;
                 }
             }
-            
             // Save merged history
             localStorage.setItem('playerPlayHistory', JSON.stringify(playerPlayHistory));
             alert('Play history imported and merged successfully!');
-        } catch (e) {
+        }
+        catch (e) {
             console.error('Error importing play history:', e);
             alert('Error importing play history. Please check the file format.');
         }
     };
     reader.readAsText(file);
 }
-
-class MinHeap<T> {
-    heap:Array<T>;
-    getval:(T) => number
-    constructor(h:(T) => number) {
+class MinHeap {
+    constructor(h) {
         this.getval = h;
         this.heap = [];
     }
- 
-    copy() : MinHeap<T> {
-        let a:MinHeap<T> = new MinHeap(this.getval);
+    copy() {
+        let a = new MinHeap(this.getval);
         a.heap = Array.from(this.heap);
         return a;
     }
-    orderedArrHelper(index:number, outArray:Array<T>) : void {
+    orderedArrHelper(index, outArray) {
         outArray.push(this.heap[index]);
         if (this.hasRightChild(index)) {
             this.orderedArrHelper(this.getRightChildIndex(index), outArray);
@@ -208,66 +157,61 @@ class MinHeap<T> {
             this.orderedArrHelper(this.getLeftChildIndex(index), outArray);
         }
     }
-
-    getOrderedArray() : Array<T>{
-        let arr:Array<T> = [];
-        let clone:MinHeap<T> = this.copy();
+    getOrderedArray() {
+        let arr = [];
+        let clone = this.copy();
         while (clone.heap.length) {
-            arr.push((clone.remove() as T));
+            arr.push(clone.remove());
         }
         return arr;
     }
     // Helper Methods
-    getLeftChildIndex(parentIndex:number) : number {
+    getLeftChildIndex(parentIndex) {
         return 2 * parentIndex + 1;
     }
-    size() : number {
+    size() {
         return this.heap.length;
     }
-    getRightChildIndex(parentIndex:number) : number {
+    getRightChildIndex(parentIndex) {
         return 2 * parentIndex + 2;
     }
-    getParentIndex(childIndex:number) : number {
+    getParentIndex(childIndex) {
         return Math.floor((childIndex - 1) / 2);
     }
-    hasLeftChild(index:number) : boolean {
+    hasLeftChild(index) {
         return this.getLeftChildIndex(index) < this.heap.length;
     }
-    hasRightChild(index:number) : boolean {
+    hasRightChild(index) {
         return this.getRightChildIndex(index) < this.heap.length;
     }
-    hasParent(index:number) : boolean {
+    hasParent(index) {
         return this.getParentIndex(index) >= 0;
     }
-    leftChild(index:number) : T {
+    leftChild(index) {
         return this.heap[this.getLeftChildIndex(index)];
     }
-    rightChild(index:number) : T {
+    rightChild(index) {
         return this.heap[this.getRightChildIndex(index)];
     }
-    parent(index:number) : T {
+    parent(index) {
         return this.heap[this.getParentIndex(index)];
     }
- 
     // Functions to create Min Heap
-     
-    swap(indexOne:number, indexTwo:number) : undefined {
-        const temp:T= this.heap[indexOne];
+    swap(indexOne, indexTwo) {
+        const temp = this.heap[indexOne];
         this.heap[indexOne] = this.heap[indexTwo];
         this.heap[indexTwo] = temp;
     }
- 
-    peek() : T|null {
+    peek() {
         if (this.heap.length === 0) {
             return null;
         }
         return this.heap[0];
     }
-     
     // Removing an element will remove the
     // top element with highest priority then
     // heapifyDown will be called 
-    remove() : T|null {
+    remove() {
         if (this.heap.length === 0) {
             return null;
         }
@@ -277,21 +221,18 @@ class MinHeap<T> {
         this.heapifyDown();
         return item;
     }
- 
-    add(item:T) : undefined {
+    add(item) {
         this.heap.push(item);
         this.heapifyUp();
     }
- 
-    heapifyUp() : undefined {
+    heapifyUp() {
         let index = this.heap.length - 1;
         while (this.hasParent(index) && this.getval(this.parent(index)) > this.getval(this.heap[index])) {
             this.swap(this.getParentIndex(index), index);
             index = this.getParentIndex(index);
         }
     }
- 
-    heapifyDown() : undefined {
+    heapifyDown() {
         let index = 0;
         while (this.hasLeftChild(index)) {
             let smallerChildIndex = this.getLeftChildIndex(index);
@@ -300,53 +241,43 @@ class MinHeap<T> {
             }
             if (this.getval(this.heap[index]) < this.getval(this.heap[smallerChildIndex])) {
                 break;
-            } else {
+            }
+            else {
                 this.swap(index, smallerChildIndex);
             }
             index = smallerChildIndex;
         }
     }
 }
-
 class Heuristic {
-    /* Heuristic evaluation of a player state
-    Scores:
-        power imbalance > blacklist:
-            Power should always be favoured over blacklists, otherwise people with a
-            lot of blacklists can be seated into a table with heavily mismatched power levels.
-        blacklist < powerdiff * 3:
-            Two players that have one or two unfavoured power levels between then
-            may be seatable together. This might be the case if one player only likes
-            to play CEDH and one plays only high power, even though they might have a
-            comparable power level.
-        blacklist > powerdiff * 3:
-            Two blacklisted players are discouraged to be podded, regardless of a power difference
-            they will be moved to a pod with differing powerlevel
-    */
-    // These are fallback values only - actual values come from the weights object
-    POWERIMBALANCE:number = 10      // Cost for power imbalance that exist if theres a lower power in the pod.
-                                    // This score is additive for each player that's lower level.
-                                    // i.e., 3 players of low level with 1 higher level will add 3x score.
-    POWERDIFF:number = 0.1;           // Cost for each power that's missing out of another players list
-    BLACKLIST:number = 50;          // Cost for Blacklisted players are at same table
-    EMPTYSEAT:number = 30;          // Cost for each empty seat on a table
-    UNSEATED:number = 1;            // Encouragement cost -- try get the AI to check results that are closer to the goal 
-    // SEAT:number = // Cost for seating a player TODO: do we need this?
-
-    // Add configurable weights
-    weights: HeuristicWeights;
-    
-    maxPlayers:number;
-    hashmap:Record<number, number>; // hash: value
-    
-    constructor(maxplayers:number, weights: Partial<HeuristicWeights> = {}) {
+    constructor(maxplayers, weights = {}) {
+        /* Heuristic evaluation of a player state
+        Scores:
+            power imbalance > blacklist:
+                Power should always be favoured over blacklists, otherwise people with a
+                lot of blacklists can be seated into a table with heavily mismatched power levels.
+            blacklist < powerdiff * 3:
+                Two players that have one or two unfavoured power levels between then
+                may be seatable together. This might be the case if one player only likes
+                to play CEDH and one plays only high power, even though they might have a
+                comparable power level.
+            blacklist > powerdiff * 3:
+                Two blacklisted players are discouraged to be podded, regardless of a power difference
+                they will be moved to a pod with differing powerlevel
+        */
+        // These are fallback values only - actual values come from the weights object
+        this.POWERIMBALANCE = 10; // Cost for power imbalance that exist if theres a lower power in the pod.
+        // This score is additive for each player that's lower level.
+        // i.e., 3 players of low level with 1 higher level will add 3x score.
+        this.POWERDIFF = 0.1; // Cost for each power that's missing out of another players list
+        this.BLACKLIST = 50; // Cost for Blacklisted players are at same table
+        this.EMPTYSEAT = 30; // Cost for each empty seat on a table
+        this.UNSEATED = 1; // Encouragement cost -- try get the AI to check results that are closer to the goal 
         this.maxPlayers = maxplayers;
         this.hashmap = {};
-        
         // Merge default weights with custom weights
         const currentDefaultWeights = getHeuristicWeights();
-        this.weights = { ...currentDefaultWeights, ...weights };
-        
+        this.weights = Object.assign(Object.assign({}, currentDefaultWeights), weights);
         // Update local fallback values too
         this.POWERIMBALANCE = this.weights.powerImbalance;
         this.POWERDIFF = this.weights.powerDiff;
@@ -354,98 +285,77 @@ class Heuristic {
         this.EMPTYSEAT = this.weights.emptySeat;
         this.UNSEATED = this.weights.unseated;
     }
-
-    evalPlayer(playersSet:Set<number>) : Player|null {
+    evalPlayer(playersSet) {
         if (playersSet.size == 0) {
             return null;
         }
-        
         // Convert to array for easier processing
         const playerIds = Array.from(playersSet);
-        
         // Score each player based on how constrained they are
         const playerScores = playerIds.map(playerId => {
             const player = PLAYERS[playerId];
             let score = 0;
-            
             // Players with whitelist or blacklist constraints should be placed first
             // as they have fewer valid placements
             if (player.hasWhitelist()) {
                 score += 30;
             }
-            
             if (player.hasBlacklist()) {
                 score += 20;
             }
-            
             // Players with fewer power levels are more constrained
             score += (10 - player.power.size * 2);
-            
             // Add some randomness for variety when constraints are equal
             score += Math.random() * 2;
-            
             return { playerId, score };
         });
-        
         // Sort by score (higher is more constrained)
         playerScores.sort((a, b) => b.score - a.score);
-        
         // Return the most constrained player
         return PLAYERS[playerScores[0].playerId];
     }
-
-    evalState(state:State) {
-        let score:number = 0;
+    evalState(state) {
+        let score = 0;
         let hashValue = state.hash();
-        
         // Check if we've already computed this state's score
         if (this.hashmap[hashValue] !== undefined) {
             return this.hashmap[hashValue];
         }
-        
         // Add score for each ungrouped player
         score += state.playersLeft.size * this.weights.unseated;
-        
         let emptySeatCount = 0;
         let powerImbalanceCount = 0;
         let powerDiffCount = 0;
         let blacklistCount = 0;
         let historyPenalty = 0;
         let powerDiversityPenalty = 0;
-        
         // For each table
-        for (let i=0; i < state.tables.length; i++) {
+        for (let i = 0; i < state.tables.length; i++) {
             let table = state.tables[i];
             // Count empty seats
             let emptySeats = MAXSEATS - table.seats.size();
             emptySeatCount += emptySeats;
-            
             // Check for power imbalance and blacklists
             let playerIds = Array.from(table.seats.heap);
-            
             // Calculate play history penalty
             for (let j = 0; j < playerIds.length; j++) {
                 for (let k = j + 1; k < playerIds.length; k++) {
                     const playerId1 = playerIds[j];
                     const playerId2 = playerIds[k];
-                    
                     // Add penalty based on how many times these players have played together
                     if (playerPlayHistory[playerId1] && playerPlayHistory[playerId1][playerId2]) {
                         historyPenalty += playerPlayHistory[playerId1][playerId2];
                     }
                 }
             }
-            
             // Skip power diversity calculation for empty tables
             if (playerIds.length === 0) {
                 continue;
             }
-            
             // NEW: Calculate power diversity penalty for this table
             // Track both unique powers and highest power for each player
-            const powerLevelsAtTable = new Set<number>();
-            const playerPowers = new Map<number, number>(); // playerId -> highest power
-            
+            const powerLevelsAtTable = new Set();
+            const playerPowers = new Map(); // playerId -> highest power
             playerIds.forEach(playerId => {
                 const player = PLAYERS[playerId];
                 if (player) {
@@ -457,53 +367,44 @@ class Heuristic {
                         }
                         powerLevelsAtTable.add(power);
                     });
-                    
                     playerPowers.set(playerId, highestPower);
                 }
             });
-            
             // Calculate power diversity in two ways:
             // 1. Penalize multiple power levels at the same table
             if (powerLevelsAtTable.size > 1) {
                 // The more different power levels, the higher the penalty
                 powerDiversityPenalty += (powerLevelsAtTable.size - 1) * this.weights.powerDiversity;
             }
-            
             // 2. Check for variance in the highest power of each player at the table
             if (playerIds.length > 1) {
                 const powerValues = Array.from(playerPowers.values());
                 const maxPower = Math.max(...powerValues);
                 const minPower = Math.min(...powerValues);
-                
                 // If there's a difference between the highest power levels of players
                 if (maxPower !== minPower) {
                     // Penalize based on how different the powers are
                     powerDiversityPenalty += (maxPower - minPower) * this.weights.powerDiversity;
                 }
             }
-            
             // Check each player at the table
             for (let j = 0; j < playerIds.length; j++) {
                 let playerId = playerIds[j];
                 let player = PLAYERS[playerId];
-                
                 // Check for blacklisted players at the same table
                 if (table.containsBlackList(player)) {
                     blacklistCount++;
                 }
-                
                 // For each other player at the table
                 for (let k = 0; k < playerIds.length; k++) {
-                    if (j == k) continue;
-                    
+                    if (j == k)
+                        continue;
                     let otherPlayerId = playerIds[k];
                     let otherPlayer = PLAYERS[otherPlayerId];
-                    
                     // Check for power level mismatches
                     if (player.lowestPower < otherPlayer.lowestPower) {
                         powerImbalanceCount++;
                     }
-                    
                     // Count powers that don't overlap
                     let nonOverlappingPowers = 0;
                     otherPlayer.power.forEach(power => {
@@ -515,7 +416,6 @@ class Heuristic {
                 }
             }
         }
-        
         // Calculate final score using weights
         score += emptySeatCount * this.weights.emptySeat;
         score += powerImbalanceCount * this.weights.powerImbalance;
@@ -523,67 +423,48 @@ class Heuristic {
         score += blacklistCount * this.weights.blacklist;
         score += historyPenalty * this.weights.playHistory;
         score += powerDiversityPenalty; // Add the power diversity penalty
-        
         // Cache score for this state
         this.hashmap[hashValue] = score;
-        
         return score;
     }
 }
-
 class Environment {
-    playersList:Array<Player>;
-    maxTables:number;
-    tables:Array<Table>;
-
-    constructor(players:Array<Player>) {
+    constructor(players) {
         this.playersList = players;
-        
         // Calculate a reasonable number of tables based on player count
         const playerCount = players.length;
-        
         // Ensure we have at least 1 table and at most playerCount / 2 tables
         const minTables = 1;
         const idealTablesCount = Math.ceil(playerCount / MAXSEATS);
         const maxTables = Math.max(minTables, Math.ceil(playerCount / 2));
-        
         // Set maxTables to a reasonable value
         this.maxTables = Math.min(idealTablesCount, maxTables);
-        
         // Ensure we have at least 1 table even with no players
         if (this.maxTables < 1) {
             this.maxTables = 1;
         }
-        
         console.log(`Creating environment with ${playerCount} players and ${this.maxTables} tables`);
         this.constructTables();
     }
-
     constructTables() {
         this.tables = [];
         for (let i = 0; i < this.maxTables; i++) {
-            this.tables.push(
-                new Table(i)
-            );
+            this.tables.push(new Table(i));
         }
     }
-    
-    isGoalState(state:State) {
+    isGoalState(state) {
         // Much more lenient goal state detection to ensure solutions are found
         // A valid goal state can have more unsorted players, especially for larger player groups
         const totalPlayers = this.playersList.length;
-        
         // For large groups, allow up to 25% of players to be unsorted
         // For smaller groups, allow at least 4 players to be unsorted
         const maxUnsortedAllowed = Math.max(4, Math.ceil(totalPlayers * 0.25));
-        
         // Accept as a goal if we have seated most players
         return state.playersLeft.size <= maxUnsortedAllowed;
     }
-
-    legalActions(state:State, player:Player) : Array<Table> {
+    legalActions(state, player) {
         // legal seats for player instead of (for each player, for each table) decreases the scope by a considerable margin
-        var availableTables:Array<Table> = [];
+        var availableTables = [];
         for (let table of state.tables) {
             if (table.canSeat(player.id)) {
                 availableTables.push(table);
@@ -591,43 +472,36 @@ class Environment {
         }
         return availableTables;
     }
-
-    getInitialState() : State {
-        let playersIdSet:Set<number> = new Set();
+    getInitialState() {
+        let playersIdSet = new Set();
         for (let player of this.playersList) {
             playersIdSet.add(player.id);
         }
         return new State(this.tables, playersIdSet);
     }
 }
-
 class State {
-    tables:Array<Table>;
-    playersLeft:Set<number>;
-    hashValue:number;
     // a possible assignment of variables of course
-    constructor(tables:Array<Table>, playersLeft:Set<number>|Array<number>) {
+    constructor(tables, playersLeft) {
         this.tables = [];
         this.playersLeft = new Set(playersLeft);
         this.hashValue = 0;
         for (let i = 0; i < tables.length; i++) {
-            this.tables.push(tables[i].copy())
+            this.tables.push(tables[i].copy());
         }
     }
-
-    copy() : State {
+    copy() {
         return new State(this.tables, this.playersLeft);
     }
     totalSeatedPlayers() {
-        return this.tables.reduce((prev, curr) => {return prev + curr.seatedPlayers()}, 0);
+        return this.tables.reduce((prev, curr) => { return prev + curr.seatedPlayers(); }, 0);
     }
-    nextState(playerId:number, toTable:number) : State {
+    nextState(playerId, toTable) {
         let stateCpy = this.copy();
         stateCpy.tables[toTable].seatPlayer(playerId);
         stateCpy.playersLeft.delete(playerId);
         return stateCpy;
     }
-    
     /*
         Returns a hash of this state.
         State hashes do not care for the table order, a state with two tables of the order
@@ -641,14 +515,13 @@ class State {
             a more unique ordering of playerXtables is given.
         TODO: fix note above
     */
-    hash() : number {
+    hash() {
         if (this.hashValue !== 0) {
             return this.hashValue;
         }
         // do I need this?.. yes
-
         // basically change the whole id list of seats to strings and hash the strings
-        var tablestrings:Array<string> = [];
+        var tablestrings = [];
         for (let table of this.tables) {
             if (table.seats.heap.length > 0) {
                 // sets shouldnt change order, so ordering doesnt matter 
@@ -659,14 +532,12 @@ class State {
                 tablestrings.push(substr += ")");
             }
         }
-        let sortedNames = tablestrings.sort().reduce((prev, curr) => {return prev + "-" + curr}, "")
+        let sortedNames = tablestrings.sort().reduce((prev, curr) => { return prev + "-" + curr; }, "");
         this.hashValue = hashString(sortedNames);
         return this.hashValue;
     }
-
-    getSeats() : Array<Array<number>> {
-        var allSeatsArray:Array<Array<number>> = [],
-            tableSeats:Array<number>;
+    getSeats() {
+        var allSeatsArray = [], tableSeats;
         for (let table of this.tables) {
             tableSeats = [];
             for (let seat of table.seats.getOrderedArray()) {
@@ -677,128 +548,101 @@ class State {
         return allSeatsArray;
     }
 }
-
 class Agent {
-    
-    heuristic:Heuristic
-    env:Environment
-    unsortedPlayers:Set<number>
-    frontier:MinHeap<State>;
-    maxSolutions:number;
-    solutions:Array<Solution>;
-    timeoutAt:number;
-    // staticstic
-    nodesExpanded:number;   // how many states are checked for expansion
-    nodesGenerated:number;  // how many states are generated
-    nodesSkipped:number;    // how many states are skipped due to already explored
-    goalsFound:number;      // how many goal states are generated
-    constructor(heuristic:Heuristic, environment:Environment, maxSolutions:number) {
+    constructor(heuristic, environment, maxSolutions) {
         this.heuristic = heuristic;
         this.env = environment;
         this.solutions = [];
         this.maxSolutions = maxSolutions;
         this.timeoutAt = Date.now() + TIMEOUT;
         this.unsortedPlayers = new Set();
-        this.env.playersList.map((player) => {this.unsortedPlayers.add(player.id)});
+        this.env.playersList.map((player) => { this.unsortedPlayers.add(player.id); });
         this.nodesGenerated = this.goalsFound = this.nodesSkipped = this.nodesExpanded = 0;
     }
-
-    addSolution(state:State) {
+    addSolution(state) {
         // TODO: maybe add a callback here, usable in frontend?
         if (this.solutions.length >= this.maxSolutions) {
             return;
         }
         // Add as a Solution type
-        this.solutions.push(state as Solution);
+        this.solutions.push(state);
     }
     search() {
         throw Error("Base Agent does not implement a search() method");
     }
-
-    initializeFrontier(initialState:State) : undefined {
-        this.frontier = new MinHeap((a) => {return this.heuristic.evalState(a)});
+    initializeFrontier(initialState) {
+        this.frontier = new MinHeap((a) => { return this.heuristic.evalState(a); });
         this.frontier.add(initialState);
     }
-
-    start() : Array<Solution> {
-        let initialState:State = this.env.getInitialState();
+    start() {
+        let initialState = this.env.getInitialState();
         this.initializeFrontier(initialState);
         this.search();
         return this.solutions;
     }
-    checkTimeout() : boolean {
+    checkTimeout() {
         if (Date.now() > this.timeoutAt) {
             return true;
         }
         return false;
     }
 }
-
 class RandomAgent extends Agent {
-    search(): Solution[] {
+    search() {
         var playersLeft = new Set(this.unsortedPlayers);
         var theState = this.frontier.remove();
-        
         // If there are no players or no initial state, try to create a fallback
         if (playersLeft.size === 0 || theState === null) {
             console.log("RandomAgent: No players or invalid initial state, generating fallback");
             const allPlayers = Object.values(PLAYERS);
             if (allPlayers.length > 0) {
                 const fallbackSolution = generateFallbackSolution(allPlayers, this.env.maxTables);
-                this.solutions = [fallbackSolution] as Solution[];
+                this.solutions = [fallbackSolution];
                 this.goalsFound = 1;
                 return this.solutions;
             }
             return [];
         }
-        
         while (playersLeft.size > 0) {
             var player = this.heuristic.evalPlayer(playersLeft);
             if (theState != null && player != null) {
                 let actions = this.env.legalActions(theState, player);
-                
                 // If no legal actions, break out of the loop
                 if (actions.length === 0) {
                     console.log(`RandomAgent: No legal actions for player ${player.name}, breaking`);
                     break;
                 }
-                
-                let action:Table = actions[Math.floor(Math.random() * actions.length)];
+                let action = actions[Math.floor(Math.random() * actions.length)];
                 theState = theState.nextState(player.id, action.id);
                 playersLeft.delete(player.id);
-            } else {
+            }
+            else {
                 // If player or state is null, break out of the loop
                 break;
             }
         }
-        
         if (theState != null) {
             this.addSolution(theState);
         }
-        
         // If no solutions were found, generate a fallback
         if (this.solutions.length === 0) {
             console.log("RandomAgent: No solutions found, generating fallback");
             const allPlayers = Object.values(PLAYERS);
             if (allPlayers.length > 0) {
                 const fallbackSolution = generateFallbackSolution(allPlayers, this.env.maxTables);
-                this.solutions = [fallbackSolution] as Solution[];
+                this.solutions = [fallbackSolution];
                 this.goalsFound = 1;
             }
         }
-        
         return this.solutions;
     }
 }
-
 class AStarAgent extends Agent {
-
-    search(): Solution[] {
+    search() {
         // Add early termination for optimal solutions
         let bestScore = Infinity;
         let timeoutChecks = 0;
         let progressUpdateInterval = 250; // Update progress more frequently
-        
         // Reset search progress tracking
         searchProgress.nodesExpanded = 0;
         searchProgress.nodesGenerated = 0;
@@ -806,37 +650,29 @@ class AStarAgent extends Agent {
         searchProgress.goalsFound = 0;
         searchProgress.bestScore = Infinity;
         searchProgress.progressPercent = 0;
-        
         // Estimate total work - this is a rough approximation
         const totalPlayers = this.unsortedPlayers.size;
         // More realistic estimate of total nodes 
         const estimatedTotalNodes = Math.pow(totalPlayers, 1.5) * this.env.maxTables;
-        
         // Early abort for trivial cases
         if (totalPlayers === 0) {
             console.log("No players to search for.");
             return [];
         }
-        
         // Set a maximum node expansion limit based on problem size
-        const maxNodesToExpand = Math.min(
-            1000000, // Hard upper limit
-            totalPlayers <= 8 ? 50000 : 
-            totalPlayers <= 12 ? 150000 : 
-            totalPlayers <= 16 ? 300000 : 
-            500000
-        );
-        
+        const maxNodesToExpand = Math.min(1000000, // Hard upper limit
+        totalPlayers <= 8 ? 50000 :
+            totalPlayers <= 12 ? 150000 :
+                totalPlayers <= 16 ? 300000 :
+                    500000);
         console.log(`Using max expansion limit of ${maxNodesToExpand} nodes`);
-        
-        while(true) {
+        while (true) {
             // Check for timeout and update progress more frequently
             if (timeoutChecks % progressUpdateInterval === 0) {
                 if (this.checkTimeout()) {
                     console.log("Search timed out.");
                     break;
                 }
-                
                 // Update progress for UI feedback
                 const progress = Math.min(100, Math.round((this.nodesExpanded / estimatedTotalNodes) * 100));
                 searchProgress.progressPercent = progress;
@@ -845,13 +681,11 @@ class AStarAgent extends Agent {
                 searchProgress.nodesSkipped = this.nodesSkipped;
                 searchProgress.goalsFound = this.goalsFound;
                 searchProgress.bestScore = bestScore;
-                
                 // Dispatch event for UI updates
-                const progressEvent = new CustomEvent('searchProgressUpdate', { 
-                    detail: { progress: searchProgress } 
+                const progressEvent = new CustomEvent('searchProgressUpdate', {
+                    detail: { progress: searchProgress }
                 });
                 document.dispatchEvent(progressEvent);
-                
                 // Check for node expansion limit
                 if (this.nodesExpanded >= maxNodesToExpand) {
                     console.log(`Reached maximum node expansion limit of ${maxNodesToExpand}.`);
@@ -859,184 +693,154 @@ class AStarAgent extends Agent {
                 }
             }
             timeoutChecks++;
-            
             let topState = this.frontier.remove();
             if (topState === null) {
                 console.log("Frontier emptied, search failed.");
                 break;
             }
-            
             this.nodesExpanded++;
-            
             // Check if we've reached a goal state
             if (this.env.isGoalState(topState)) {
                 // Calculate the score for this goal state
                 const scoreValue = this.heuristic.evalState(topState);
-                
                 // Only accept the goal state if it has a reasonable score
                 if (scoreValue < 5000) { // A high but not infinite threshold
                     this.goalsFound++;
                     this.addSolution(topState);
-                    
                     // Track the best score
                     if (scoreValue < bestScore) {
                         bestScore = scoreValue;
                         searchProgress.bestScore = bestScore;
                     }
-                    
                     // Early termination if we have enough solutions or a perfect solution
                     // More aggressive termination criteria for small problems
-                    if ((totalPlayers <= 8 && this.solutions.length >= 3) || 
-                        (this.solutions.length >= this.maxSolutions) || 
+                    if ((totalPlayers <= 8 && this.solutions.length >= 3) ||
+                        (this.solutions.length >= this.maxSolutions) ||
                         bestScore < 10) { // Very good solution threshold
                         break;
                     }
-                } else {
+                }
+                else {
                     console.log(`Skipping goal state with very high score: ${scoreValue}`);
                 }
-                
                 // Continue searching for better solutions
                 continue;
             }
-            
             // IMPROVED PRUNING: More nuanced pruning based on current state evaluation and remaining players
             const currentScore = this.heuristic.evalState(topState);
-            
             // If we already have solutions and this path is much worse, skip it
             // More nuanced pruning - consider problem size and current best score
             const basePruneFactor = totalPlayers <= 8 ? 1.3 : 1.5; // Looser pruning for larger problems
             const solutionCountBonus = Math.min(0.5, this.solutions.length * 0.1); // Each solution makes us slightly more selective
             const remainingPlayersRatio = topState.playersLeft.size / totalPlayers;
-            
             // Calculate pruning factor - be stricter when we have more solutions or fewer players remaining
             // For larger problems, we need to be more lenient
             const pruneFactor = basePruneFactor + (remainingPlayersRatio * 0.8) - solutionCountBonus;
-            
             // If we have any solutions, start pruning - but more carefully for larger problems
             if (this.solutions.length > 0 && currentScore > bestScore * pruneFactor) {
                 this.nodesSkipped++;
                 continue;
             }
-            
             // Even if we don't have solutions yet, prune extremely poor states
             // This helps focus the search when the state space is very large
             // Be more lenient for larger problems
-            const extremePoorThreshold = totalPlayers <= 8 ? 200 : 
-                                        totalPlayers <= 12 ? 400 : 800;
-            
+            const extremePoorThreshold = totalPlayers <= 8 ? 200 :
+                totalPlayers <= 12 ? 400 : 800;
             if (currentScore > extremePoorThreshold && topState.playersLeft.size < totalPlayers / 2) {
                 this.nodesSkipped++;
                 continue;
             }
-            
             // Get a player to seat
             let player = this.heuristic.evalPlayer(topState.playersLeft);
-            if (player === null) continue;
-            
+            if (player === null)
+                continue;
             // Get valid actions for this player
             let legalActions = this.env.legalActions(topState, player);
-            
             // IMPROVED ACTION ORDERING: Sort actions by how promising they appear before generating states
             // For each legal action, precompute a rough estimate of its quality
             const rankedActions = legalActions.map(table => {
                 // Create a more nuanced score based on multiple factors
                 let actionScore = 0;
-                
                 // TABLE FULLNESS: Prefer to fill tables that already have players
                 if (table.seatedPlayers() > 0) {
                     // Prefer tables that are closer to being filled (but not completely full)
                     const emptySeats = MAXSEATS - table.seatedPlayers();
                     if (emptySeats === 1) {
                         actionScore -= 15; // Strong preference for completing a table
-                    } else if (emptySeats === 2) {
+                    }
+                    else if (emptySeats === 2) {
                         actionScore -= 8; // Good preference for nearly full tables
-                    } else {
+                    }
+                    else {
                         actionScore -= 3; // Slight preference for tables with some players
                     }
                 }
-                
                 // WHITELIST: Strongly prefer tables with whitelisted players
                 if (table.containsWhitelist(player)) {
                     actionScore -= 20; // Much stronger preference for whitelists
                 }
-                
                 // BLACKLIST: Strongly avoid tables with blacklisted players
                 if (table.containsBlackList(player)) {
                     actionScore += 40; // Much stronger avoidance of blacklists
                 }
-                
                 // POWER LEVEL COMPATIBILITY: Check compatibility with existing players
                 // This is the most important factor for proper matching
                 const tablePlayers = Array.from(table.seats.heap).map(id => PLAYERS[id]);
                 let powerMismatch = 0;
                 let powerMatch = 0;
-                
                 tablePlayers.forEach(tablePlayer => {
                     // More nuanced power level compatibility calculation
                     // Count powers that match and don't match
                     let exactMatchCount = 0;
                     let notMatchingCount = 0;
-                    
                     tablePlayer.power.forEach(power => {
                         if (player.power.has(power)) {
                             exactMatchCount++;
-                        } else {
+                        }
+                        else {
                             notMatchingCount++;
                         }
                     });
-                    
                     powerMatch += exactMatchCount;
                     powerMismatch += notMatchingCount;
-                    
                     // Check also for power level difference
                     const playerHighestPower = Math.max(...Array.from(player.power));
                     const tablePlayerHighestPower = Math.max(...Array.from(tablePlayer.power));
-                    
                     // Strongly penalize different power levels
                     if (playerHighestPower !== tablePlayerHighestPower) {
                         powerMismatch += Math.abs(playerHighestPower - tablePlayerHighestPower) * 3;
                     }
                 });
-                
                 // MUCH stronger emphasis on power matching
                 actionScore -= powerMatch * 5; // Much stronger reward for matches
                 actionScore += powerMismatch * 4; // Much stronger penalty for mismatches
-                
                 // PLAY HISTORY: Try to seat players who haven't played together much
                 let historyScore = 0;
                 tablePlayers.forEach(tablePlayer => {
                     const playCount = getPlayCount(player.id, tablePlayer.id);
                     historyScore += playCount * 2; // Penalize frequently paired players
                 });
-                
                 actionScore += historyScore;
-                
                 return { table, score: actionScore };
             });
-            
             // Sort actions by score (lower is better)
             rankedActions.sort((a, b) => a.score - b.score);
-            
             // Be more exploratory for larger problems
             // Limit branching factor based on the number of players and actions
-            const maxActionsToExplore = Math.min(
-                legalActions.length,
-                totalPlayers <= 8 ? legalActions.length : // For small groups, try all
+            const maxActionsToExplore = Math.min(legalActions.length, totalPlayers <= 8 ? legalActions.length : // For small groups, try all
                 totalPlayers <= 12 ? Math.max(5, Math.ceil(legalActions.length * 0.6)) : // For medium groups, be selective but not too much
-                Math.max(3, Math.ceil(legalActions.length * 0.4)) // For large groups, be very selective
+                    Math.max(3, Math.ceil(legalActions.length * 0.4)) // For large groups, be very selective
             );
-            
             // Only generate successor states for the most promising actions
             for (let i = 0; i < maxActionsToExplore; i++) {
-                if (i >= rankedActions.length) break;
-                
+                if (i >= rankedActions.length)
+                    break;
                 const action = rankedActions[i];
                 let nextState = topState.nextState(player.id, action.table.id);
                 this.nodesGenerated++;
                 this.frontier.add(nextState);
             }
         }
-        
         // Final progress update
         searchProgress.nodesExpanded = this.nodesExpanded;
         searchProgress.nodesGenerated = this.nodesGenerated;
@@ -1044,55 +848,43 @@ class AStarAgent extends Agent {
         searchProgress.goalsFound = this.goalsFound;
         searchProgress.bestScore = bestScore;
         searchProgress.progressPercent = 100;
-        
         // If no solutions were found, create a fallback solution
         if (this.solutions.length === 0) {
             console.log("No solutions found by A* search, generating fallback solution");
-            
             // Generate a fallback solution
             const allPlayers = Object.values(PLAYERS);
             const fallbackSolution = generateFallbackSolution(allPlayers, this.env.maxTables);
-            
             // Add it to solutions - using type assertion to tell TypeScript this is ok
-            const fallbackSolutions = [fallbackSolution] as unknown as Solution[];
+            const fallbackSolutions = [fallbackSolution];
             this.solutions = fallbackSolutions;
             this.goalsFound = 1;
             searchProgress.goalsFound = 1;
         }
-        
         console.log("A* search completed.");
         console.log(`Nodes expanded: ${this.nodesExpanded}`);
         console.log(`Nodes generated: ${this.nodesGenerated}`);
         console.log(`Nodes skipped: ${this.nodesSkipped}`);
         console.log(`Goals found: ${this.goalsFound}`);
         console.log(`Best score: ${bestScore}`);
-        
         // Dispatch final event
-        const finalEvent = new CustomEvent('searchComplete', { 
-            detail: { progress: searchProgress } 
+        const finalEvent = new CustomEvent('searchComplete', {
+            detail: { progress: searchProgress }
         });
         document.dispatchEvent(finalEvent);
-        
-        return this.solutions as Solution[];
+        return this.solutions;
     }
 }
-
 class Table {
-    id:number
-    seats:MinHeap<number>
-
-    constructor(id:number) {
+    constructor(id) {
         this.id = id;
-        this.seats = new MinHeap((a) => {return a});
+        this.seats = new MinHeap((a) => { return a; });
     }
-
-    copy() : Table {
+    copy() {
         let newTbl = new Table(this.id);
         newTbl.seats = this.seats.copy();
         return newTbl;
     }
-
-    seatPlayer(playerId:number) {
+    seatPlayer(playerId) {
         if (PLAYERS[playerId]) {
             for (let listPlayerId of PLAYERS[playerId].getPlayPod()) {
                 this.seats.add(listPlayerId);
@@ -1102,15 +894,14 @@ class Table {
     /*
         Returns True if table is completely empty, or there is spot for a player (and his whitelist)
     */
-    canSeat(playerId:number) : boolean {
+    canSeat(playerId) {
         return (this.seats.size()) == 0 || (this.seats.size() + PLAYERS[playerId].seatSize()) <= MAXSEATS;
     }
-
-    containsList(player:Player, listAttr:string) : boolean {
+    containsList(player, listAttr) {
         for (let listedPlayer of player[listAttr]) {
-            let playerId:number = listedPlayer;
+            let playerId = listedPlayer;
             for (let player of this.seats.getOrderedArray()) {
-                let playerId2:number = Number(player)
+                let playerId2 = Number(player);
                 if (playerId == playerId2) {
                     return true;
                 }
@@ -1118,58 +909,41 @@ class Table {
         }
         return false;
     }
-
-    containsBlackList(player:Player) {
+    containsBlackList(player) {
         return this.containsList(player, "blacklist");
     }
-    
-    containsWhitelist(player:Player) {
+    containsWhitelist(player) {
         return this.containsList(player, "whitelist");
     }
-    
     seatedPlayers() {
         return this.seats.size();
     }
 }
-
 /* The node for a player */
 class Player {
-    id:number;
-    name:string;
-    power:Set<number>;
-    whitelist:Set<number>;
-    blacklist:Set<number>;
-    hashValue:number;
-    lowestPower:number;
-    whitelistChain:Array<number>;
-
-    constructor(id:number, name:string, power:Set<number>) {
+    constructor(id, name, power) {
         this.id = id;
         this.name = name;
         this.power = power;
         this.whitelist = new Set();
         this.blacklist = new Set();
         this.hashValue = hashString(this.name);
-        this.lowestPower = (Array.from(this.power).reduce(
-            (prev, curr) => {return prev < curr ? prev : curr;}, Infinity
-        ));
+        this.lowestPower = (Array.from(this.power).reduce((prev, curr) => { return prev < curr ? prev : curr; }, Infinity));
         this.whitelistChain = [];
     }
-
     /* Sets the whitelist variable as the set or iterable */
-    setWhitelist(whitelist:Set<number>) {
+    setWhitelist(whitelist) {
         this.whitelist = whitelist;
     }
-
     /* Sets the blacklist variable as the set or iterable */
-    setBlacklist(blacklist:Set<number>) {
+    setBlacklist(blacklist) {
         this.blacklist = blacklist;
     }
     /*
         Returns the total number of player this player occupies
         (and his whitelist chain)
     */
-    seatSize() : number {
+    seatSize() {
         if (this.hasWhitelist()) {
             return this.getPlayPod().length + 1;
         }
@@ -1179,17 +953,17 @@ class Player {
         Recursively call #chainRecursive() of all players that have not been added
         to the current chain, sets the #whitelistChain for future calls
     */
-    chainRecursive(chain:Array<number>, added:Set<number>) : void {
+    chainRecursive(chain, added) {
         for (let playerId of this.whitelist) {
             if (added.has(playerId)) {
                 continue;
-            } else {
+            }
+            else {
                 // Check if the player exists in PLAYERS before accessing it
                 if (!PLAYERS[playerId]) {
                     console.warn(`Player ID ${playerId} not found in PLAYERS dictionary. Skipping in whitelist chain.`);
                     continue;
                 }
-                
                 // player wasn't added before, add him and call his recursive continuation
                 chain.push(playerId);
                 added.add(playerId);
@@ -1205,98 +979,84 @@ class Player {
         (and iteratively all whitelists they have to themselves)
         The return array is inclusive of the player it was called from.
     */
-    getPlayPod() : Array<number> {
+    getPlayPod() {
         try {
             // If we already computed the chain, return it
             if (this.whitelistChain.length > 0) {
                 return this.whitelistChain;
             }
-            
             // If the player has no whitelist, return just this player's ID
             if (!this.hasWhitelist()) {
                 this.whitelistChain = [this.id];
                 return this.whitelistChain;
             }
-            
             // If the player has a whitelist, compute the chain
-            var added:Set<number> = new Set([this.id]);
-            var whitelistchain:Array<number> = [this.id];
+            var added = new Set([this.id]);
+            var whitelistchain = [this.id];
             this.chainRecursive(whitelistchain, added);
-            
             // Ensure the whitelistChain is never empty
             if (this.whitelistChain.length === 0) {
                 this.whitelistChain = [this.id];
             }
-            
             return this.whitelistChain;
-        } catch (error) {
+        }
+        catch (error) {
             console.error(`Error in getPlayPod for player ${this.name} (ID: ${this.id}):`, error);
             // Return just this player's ID as a fallback
             return [this.id];
         }
     }
-
-    hasWhitelist():boolean {
+    hasWhitelist() {
         return this.whitelist.size > 0;
     }
-    hasBlacklist():boolean {
+    hasBlacklist() {
         return this.blacklist.size > 0;
     }
-    hash() : number{
+    hash() {
         return this.hashValue;
     }
 }
-function getList(listtype:string, playerEl:Element) : Array<number>{
+function getList(listtype, playerEl) {
     var nodeList = playerEl.querySelector("." + listtype);
-    var returnArr:Array<number> = [];
+    var returnArr = [];
     if (nodeList) {
         for (let i = 0; i < nodeList.children.length; i++) {
-            let playerListId:string = nodeList.children[i].classList[0];
+            let playerListId = nodeList.children[i].classList[0];
             if (playerListId !== null) {
-                returnArr.push(
-                    Number(String(playerListId).split("-")[2])
-                );
+                returnArr.push(Number(String(playerListId).split("-")[2]));
             }
         }
     }
     return returnArr;
 }
 /* Returns a list of all added players, instantiated in a list of Player classes */
-function collectPlayers():Array<Player> {
+function collectPlayers() {
     // Clear previous player data
     PLAYERS = {};
-    
     // Collect all players from the UI
-    const playersContainer = (document.getElementById('players-container') as HTMLElement);
-    
+    const playersContainer = document.getElementById('players-container');
     if (!playersContainer) {
         console.error("Could not find players container");
         return [];
     }
-    
     console.log(`Found players container with ${playersContainer.children.length} children`);
-    
     // First pass: Create all players and add them to the PLAYERS object
-    const playersArr:Array<Player> = []
+    const playersArr = [];
     let pcount = 0;
-    
     // Create players for everything in the container
     for (let i = 0; i < playersContainer.children.length; i++) {
-        const playerEl = playersContainer.children[i] as HTMLElement;
-        if (!playerEl.classList.contains('player-container-instance')) continue;
-        
+        const playerEl = playersContainer.children[i];
+        if (!playerEl.classList.contains('player-container-instance'))
+            continue;
         // Get player name
-        const playerNameEl = playerEl.querySelector('.player-name') as HTMLElement;
+        const playerNameEl = playerEl.querySelector('.player-name');
         const playerName = playerNameEl ? playerNameEl.textContent || `Player ${pcount}` : `Player ${pcount}`;
-        
         // Get player power level(s)
-        const playerPowerContainer = playerEl.querySelector('.player-power-container') as HTMLElement;
+        const playerPowerContainer = playerEl.querySelector('.player-power-container');
         const powerPills = playerPowerContainer ? playerPowerContainer.querySelectorAll('.powerpill') : [];
-        
-        const playerPowers = new Set<number>();
-        
+        const playerPowers = new Set();
         // Must explicitly use Array.from to convert the NodeList to an array
-        Array.from(powerPills).forEach((pill: Element) => {
+        Array.from(powerPills).forEach((pill) => {
             const powerAttr = pill.getAttribute('value');
             if (powerAttr) {
                 // Parse the power level, handle any potential parsing errors
@@ -1305,49 +1065,44 @@ function collectPlayers():Array<Player> {
                     if (!isNaN(powerLevel) && powerLevel >= 1 && powerLevel <= 4) {
                         playerPowers.add(powerLevel);
                     }
-                } catch (e) {
+                }
+                catch (e) {
                     console.warn(`Invalid power level: ${powerAttr} for player ${playerName}`);
                 }
             }
         });
-        
         // Ensure each player has at least one power level
         if (playerPowers.size === 0) {
             console.warn(`Player ${playerName} has no power levels, assigning default power level 2 (Mid)`);
             playerPowers.add(Powerlevel.MEDIUM); // Default to medium power level
         }
-        
         // Create player with the resolved power levels
         const newPlayer = new Player(pcount, playerName, playerPowers);
         console.log(`Created player: ${playerName} (ID: ${pcount}) with power levels: ${Array.from(playerPowers).join(', ')}`);
-        
         // Store in global registry and temporary array
         PLAYERS[pcount] = newPlayer;
         playersArr.push(newPlayer);
         pcount++;
     }
-    
     console.log(`Created ${pcount} players in first pass`);
-    
     // Second pass: Process blacklist and whitelist for each player
     for (let i = 0; i < playersContainer.children.length; i++) {
-        const playerEl = playersContainer.children[i] as HTMLElement;
-        if (!playerEl.classList.contains('player-container-instance')) continue;
-        
+        const playerEl = playersContainer.children[i];
+        if (!playerEl.classList.contains('player-container-instance'))
+            continue;
         // Get player ID for this container
         const playerId = getPlayerIdFromElement(playerEl);
-        if (playerId === null) continue;
-        
+        if (playerId === null)
+            continue;
         // Get the player object
         const player = PLAYERS[playerId];
-        if (!player) continue;
-        
+        if (!player)
+            continue;
         // Process blacklist
         const blacklist = getList('blacklist', playerEl);
         if (blacklist.length > 0) {
-            const blacklistSet = new Set<number>(blacklist.filter(id => id in PLAYERS));
+            const blacklistSet = new Set(blacklist.filter(id => id in PLAYERS));
             player.setBlacklist(blacklistSet);
-            
             // Ensure bidirectional blacklists
             blacklistSet.forEach(targetId => {
                 const targetPlayer = PLAYERS[targetId];
@@ -1356,13 +1111,11 @@ function collectPlayers():Array<Player> {
                 }
             });
         }
-        
         // Process whitelist
         const whitelist = getList('whitelist', playerEl);
         if (whitelist.length > 0) {
-            const whitelistSet = new Set<number>(whitelist.filter(id => id in PLAYERS));
+            const whitelistSet = new Set(whitelist.filter(id => id in PLAYERS));
             player.setWhitelist(whitelistSet);
-            
             // Ensure bidirectional whitelists
             whitelistSet.forEach(targetId => {
                 const targetPlayer = PLAYERS[targetId];
@@ -1372,7 +1125,6 @@ function collectPlayers():Array<Player> {
             });
         }
     }
-    
     // Check if there are enough players to make tables
     if (playersArr.length > 0) {
         // Compute whitelist chains
@@ -1380,35 +1132,33 @@ function collectPlayers():Array<Player> {
         playersArr.forEach(player => {
             if (player.hasWhitelist()) {
                 // Initialize chain with just this player's ID
-                const chain: Array<number> = [];
-                const added = new Set<number>();
+                const chain = [];
+                const added = new Set();
                 player.chainRecursive(chain, added);
                 player.whitelistChain = chain;
             }
         });
     }
-    
     console.log(`Final player count: ${playersArr.length}`);
     return playersArr;
 }
-
 // HELPER FUNCTIONS
 // Update playernameSort to work with Player objects
-function playernameSort(a:Player, b:Player) :number {
+function playernameSort(a, b) {
     if (a.name < b.name) {
         return -1;
-    } else if (a.name > b.name) {
+    }
+    else if (a.name > b.name) {
         return 1;
     }
     return 0;
 }
-
 // OC (https://stackoverflow.com/questions/7616461/generate-a-hash-from-string-in-javascript)
 // donut steel
-function hashString(str:string) : number {
-    var hash = 0,
-    i:number, chr:number;
-    if (str.length === 0) return hash;
+function hashString(str) {
+    var hash = 0, i, chr;
+    if (str.length === 0)
+        return hash;
     for (i = 0; i < str.length; i++) {
         chr = str.charCodeAt(i);
         hash = ((hash << 5) - hash) + chr;
@@ -1418,13 +1168,13 @@ function hashString(str:string) : number {
 }
 /*
     Adds a value to a dict's value set, if key does not exist, create a new set
-    Returns 1 if a new set was created within the record 
+    Returns 1 if a new set was created within the record
 */
-function addValToDictSet(dictObj:Record<number, Set<number>>, key:number, value:number): number {
+function addValToDictSet(dictObj, key, value) {
     var added = 0;
     if (!(key in dictObj)) {
         dictObj[key] = new Set();
-        added ++;
+        added++;
     }
     dictObj[key].add(value);
     return added;
@@ -1469,24 +1219,19 @@ function doSearch(agentType:string) {
     // return multiple solutions, maybe add a solution to the DOM each time a solution is found?
 }
 */
-
 // Initialize play history when the page loads
 window.addEventListener('load', initPlayHistory);
-
 // Functions to get and set heuristic weights
-function getHeuristicWeights(): HeuristicWeights {
-    return { ...DEFAULT_WEIGHTS };
+function getHeuristicWeights() {
+    return Object.assign({}, DEFAULT_WEIGHTS);
 }
-
-function setHeuristicWeights(weights: Partial<HeuristicWeights>) {
+function setHeuristicWeights(weights) {
     Object.assign(DEFAULT_WEIGHTS, weights);
 }
-
 // Updated doSearch function to use new configurable weights
-function doSearch(agentType:string) {
+function doSearch(agentType) {
     try {
         console.log(`Starting ${agentType} search...`);
-        
         // Collect all players
         let players = collectPlayers();
         if (players.length === 0) {
@@ -1494,96 +1239,84 @@ function doSearch(agentType:string) {
             showFeedbackToast("No players found to arrange into pods", true);
             return 0;
         }
-        
-        let env:Environment = new Environment(players);
+        let env = new Environment(players);
         let heuristic = new Heuristic(players.length);
-        let agent:Agent;
-        
+        let agent;
         if (agentType === "random") {
             // For random agent, use special weights that prioritize blacklist avoidance
-            const randomWeights: HeuristicWeights = {
-                ...DEFAULT_WEIGHTS,
-                blacklist: 100, // Higher penalty for blacklisted players
-                emptySeat: 10   // Lower penalty for empty seats
-            };
-            
+            const randomWeights = Object.assign(Object.assign({}, DEFAULT_WEIGHTS), { blacklist: 100, emptySeat: 10 // Lower penalty for empty seats
+             });
             heuristic = new Heuristic(players.length, randomWeights);
             agent = new RandomAgent(heuristic, env, MAXSOLUTIONS);
-        } else {
+        }
+        else {
             // For A* search, use the current configured weights
             agent = new AStarAgent(heuristic, env, MAXSOLUTIONS);
         }
-        
         console.log(`Using ${agentType} agent to arrange ${players.length} players into up to ${env.maxTables} tables`);
-        
         // Run the search
         let solutionsArr = agent.start();
         console.log(`Found ${solutionsArr.length} solutions`);
-        
         // Handle solutions - all agents now guarantee at least one solution
         // either optimal or fallback
         for (let i = 0; i < solutionsArr.length; i++) {
-            console.log(`Processing solution ${i+1}/${solutionsArr.length}`);
+            console.log(`Processing solution ${i + 1}/${solutionsArr.length}`);
             let seats;
             let score;
-            
             // Check if it's a State solution
             if ('getSeats' in solutionsArr[i]) {
-                const stateSolution = solutionsArr[i] as State;
+                const stateSolution = solutionsArr[i];
                 seats = stateSolution.getSeats();
                 score = heuristic.evalState(stateSolution);
-            } 
+            }
             // Check if it's a FallbackSolution
             else if ('seatings' in solutionsArr[i]) {
-                const fallbackSolution = solutionsArr[i] as FallbackSolution;
+                const fallbackSolution = solutionsArr[i];
                 seats = fallbackSolution.seatings;
                 score = fallbackSolution.score;
-            } else {
+            }
+            else {
                 console.error("Invalid solution format:", solutionsArr[i]);
                 continue;
             }
-            
-            console.log(`Solution ${i+1} has ${seats.length} tables with score ${score}`);
+            console.log(`Solution ${i + 1} has ${seats.length} tables with score ${score}`);
             newSolution(seats, score);
         }
-        
         // Record play history for the first (best) solution if available
         if (solutionsArr.length > 0) {
             let firstSolution = null;
             const solution = solutionsArr[0];
-            
             try {
                 // Check if it's a State solution
                 if (solution && typeof solution === 'object' && 'getSeats' in solution) {
-                    firstSolution = (solution as State).getSeats();
-                } 
+                    firstSolution = solution.getSeats();
+                }
                 // Check if it's a FallbackSolution
                 else if (solution && typeof solution === 'object' && 'seatings' in solution) {
-                    firstSolution = (solution as FallbackSolution).seatings;
+                    firstSolution = solution.seatings;
                 }
-                
                 if (firstSolution && Array.isArray(firstSolution)) {
                     console.log("Recording play history for best solution");
                     recordPlayedTogether(firstSolution);
-                    
                     // Also update visual indicators if function exists
                     if (typeof updatePlayHistoryIndicators === 'function') {
                         setTimeout(updatePlayHistoryIndicators, 500);
                     }
-                } else {
+                }
+                else {
                     console.warn("Could not record play history - invalid solution format");
                 }
-            } catch (error) {
+            }
+            catch (error) {
                 console.error("Error handling play history:", error);
                 // Don't let play history errors block the main function
             }
         }
-        
         return solutionsArr.length;
-    } catch (error) {
+    }
+    catch (error) {
         console.error("Error in doSearch:", error);
-        showFeedbackToast("Error arranging players: " + (error as Error).message, true);
-        
+        showFeedbackToast("Error arranging players: " + error.message, true);
         // Final error handling for the fallback solution
         try {
             console.log("Attempting to generate emergency fallback solution after error");
@@ -1596,31 +1329,33 @@ function doSearch(agentType:string) {
                         newSolution(fallbackSolution.seatings, fallbackSolution.score);
                         try {
                             recordPlayedTogether(fallbackSolution.seatings);
-                        } catch (playHistoryError) {
+                        }
+                        catch (playHistoryError) {
                             console.error("Error recording play history for emergency fallback:", playHistoryError);
                         }
                         return 1;
-                    } else {
+                    }
+                    else {
                         console.error("Invalid fallback solution generated");
                     }
-                } catch (fallbackGenerationError) {
+                }
+                catch (fallbackGenerationError) {
                     console.error("Error generating fallback solution:", fallbackGenerationError);
                 }
-            } else {
+            }
+            else {
                 console.warn("No players available for emergency fallback solution");
             }
-        } catch (fallbackError) {
+        }
+        catch (fallbackError) {
             console.error("Failed to generate emergency fallback:", fallbackError);
         }
-        
         return 0;
     }
 }
-
 // Function to generate a fallback solution when A* search fails
-function generateFallbackSolution(players: Array<Player>, maxTablesCount: number): FallbackSolution {
+function generateFallbackSolution(players, maxTablesCount) {
     console.log("Generating fallback solution...");
-    
     // Validate input
     if (!players || players.length === 0) {
         console.warn("No players provided to generateFallbackSolution");
@@ -1630,77 +1365,58 @@ function generateFallbackSolution(players: Array<Player>, maxTablesCount: number
             score: 0
         };
     }
-    
     if (maxTablesCount <= 0) {
         console.warn("Invalid maxTablesCount, defaulting to 1");
         maxTablesCount = 1;
     }
-    
     // Filter out any invalid player objects
-    const validPlayers = players.filter(player => 
-        player && typeof player.id === 'number' && 
-        player.power && player.power.size > 0
-    );
-    
+    const validPlayers = players.filter(player => player && typeof player.id === 'number' &&
+        player.power && player.power.size > 0);
     if (validPlayers.length !== players.length) {
         console.warn(`Filtered out ${players.length - validPlayers.length} invalid players`);
     }
-    
     // Create a copy of the players array that we can modify
     const availablePlayers = [...validPlayers];
-    
     // ---------------------------------------------
     // SIGNIFICANTLY IMPROVED GROUPING BY POWER LEVEL
     // ---------------------------------------------
-    
     // Group players strictly by their EXACT power levels
-    const playersByExactPower: Record<string, Player[]> = {};
-    
+    const playersByExactPower = {};
     // Create empty arrays for each possible power level
     for (let power = Powerlevel.COMP; power >= Powerlevel.CASUAL; power--) {
         playersByExactPower[power.toString()] = [];
     }
-    
     // Sort players by their specific power levels (not ranges)
     availablePlayers.forEach(player => {
         // Get all power levels for this player
         const powers = Array.from(player.power);
-        
         // If a player has multiple power levels, place them based on highest
         if (powers.length > 0) {
             const highestPower = Math.max(...powers);
             playersByExactPower[highestPower.toString()].push(player);
         }
     });
-    
     // Create empty tables
-    const tables: number[][] = Array(maxTablesCount).fill(null).map(() => []);
-    
+    const tables = Array(maxTablesCount).fill(null).map(() => []);
     // Track whether each player has been assigned to a table
-    const assignedPlayers = new Set<number>();
-    
+    const assignedPlayers = new Set();
     // Calculate required tables per power level
     let tableIndex = 0;
-    
     console.log("Strict grouping by exact power level:");
     // Process each power level strictly, starting from highest (COMP)
     for (let power = Powerlevel.COMP; power >= Powerlevel.CASUAL; power--) {
         const playersWithThisPower = playersByExactPower[power.toString()];
-        if (!playersWithThisPower || playersWithThisPower.length === 0) continue;
-        
+        if (!playersWithThisPower || playersWithThisPower.length === 0)
+            continue;
         console.log(`Processing ${playersWithThisPower.length} players with power level ${power}`);
-        
         // Calculate how many tables needed for this power level
         const tablesNeeded = Math.ceil(playersWithThisPower.length / MAXSEATS);
-        
         // Ensure we don't exceed the max tables
         const actualTablesForThisPower = Math.min(tablesNeeded, maxTablesCount - tableIndex);
-        
         if (actualTablesForThisPower <= 0) {
             console.warn(`Ran out of tables for power level ${power}`);
             continue;
         }
-        
         // Sort by blacklist/whitelist constraints
         playersWithThisPower.sort((a, b) => {
             // Prioritize players with blacklists first (more constrained)
@@ -1710,48 +1426,39 @@ function generateFallbackSolution(players: Array<Player>, maxTablesCount: number
             // Then prioritize players with whitelists
             return b.whitelist.size - a.whitelist.size;
         });
-        
         // Distribute players among tables for this power level
         let playerIndex = 0;
         for (let i = 0; i < actualTablesForThisPower; i++) {
             const currentTableIndex = tableIndex + i;
-            if (currentTableIndex >= tables.length) break;
-            
+            if (currentTableIndex >= tables.length)
+                break;
             const currentTable = tables[currentTableIndex];
-            
             // Fill this table with up to MAXSEATS players
             for (let j = 0; j < MAXSEATS && playerIndex < playersWithThisPower.length; j++) {
                 const player = playersWithThisPower[playerIndex];
-                
                 // Skip if player is already assigned
                 if (assignedPlayers.has(player.id)) {
                     playerIndex++;
                     j--; // Don't count this attempt
                     continue;
                 }
-                
                 // Check blacklist constraints
-                const hasBlacklistedPlayer = currentTable.some(playerId => 
-                    player.blacklist.has(playerId) || 
-                    (PLAYERS[playerId] && PLAYERS[playerId].blacklist.has(player.id))
-                );
-                
+                const hasBlacklistedPlayer = currentTable.some(playerId => player.blacklist.has(playerId) ||
+                    (PLAYERS[playerId] && PLAYERS[playerId].blacklist.has(player.id)));
                 if (!hasBlacklistedPlayer) {
                     currentTable.push(player.id);
                     assignedPlayers.add(player.id);
                     playerIndex++;
-                } else {
+                }
+                else {
                     // Try to find another player that fits
                     let foundAlternative = false;
                     for (let alt = playerIndex + 1; alt < playersWithThisPower.length; alt++) {
                         const altPlayer = playersWithThisPower[alt];
-                        if (assignedPlayers.has(altPlayer.id)) continue;
-                        
-                        const altHasBlacklist = currentTable.some(playerId => 
-                            altPlayer.blacklist.has(playerId) || 
-                            (PLAYERS[playerId] && PLAYERS[playerId].blacklist.has(altPlayer.id))
-                        );
-                        
+                        if (assignedPlayers.has(altPlayer.id))
+                            continue;
+                        const altHasBlacklist = currentTable.some(playerId => altPlayer.blacklist.has(playerId) ||
+                            (PLAYERS[playerId] && PLAYERS[playerId].blacklist.has(altPlayer.id)));
                         if (!altHasBlacklist) {
                             currentTable.push(altPlayer.id);
                             assignedPlayers.add(altPlayer.id);
@@ -1760,95 +1467,82 @@ function generateFallbackSolution(players: Array<Player>, maxTablesCount: number
                             break;
                         }
                     }
-                    
                     if (!foundAlternative) {
                         // If we couldn't find anyone else, use the original player despite blacklist
                         if (j === 0 || currentTable.length === 0) { // Only force if table is empty
                             currentTable.push(player.id);
                             assignedPlayers.add(player.id);
                             playerIndex++;
-                        } else {
+                        }
+                        else {
                             // Otherwise skip this seat
-                            j--; 
+                            j--;
                             playerIndex++;
                         }
                     }
                 }
             }
         }
-        
         tableIndex += actualTablesForThisPower;
     }
-    
     // Assign any remaining players, trying to preserve power level grouping
     const unassignedPlayers = availablePlayers.filter(p => !assignedPlayers.has(p.id));
-    
     if (unassignedPlayers.length > 0) {
         console.log(`Assigning ${unassignedPlayers.length} remaining players`);
-        
         // Sort unassigned players by power level (highest first)
         unassignedPlayers.sort((a, b) => {
             // Get highest power level for each player
             const aHighestPower = Math.max(...Array.from(a.power));
             const bHighestPower = Math.max(...Array.from(b.power));
-            return bHighestPower - aHighestPower; 
+            return bHighestPower - aHighestPower;
         });
-        
         // Try to find the best table for each player
         for (const player of unassignedPlayers) {
-            if (assignedPlayers.has(player.id)) continue;
-            
+            if (assignedPlayers.has(player.id))
+                continue;
             let bestTable = -1;
             let bestTableScore = Infinity;
             let playerHighestPower = Math.max(...Array.from(player.power));
-            
             // Find the best table for this player
             for (let i = 0; i < tables.length; i++) {
                 const table = tables[i];
-                if (table.length >= MAXSEATS) continue; // Skip full tables
-                
+                if (table.length >= MAXSEATS)
+                    continue; // Skip full tables
                 // Skip tables with blacklisted players
-                const hasBlacklistedPlayer = table.some(playerId => 
-                    player.blacklist.has(playerId) || 
-                    (PLAYERS[playerId] && PLAYERS[playerId].blacklist.has(player.id))
-                );
-                if (hasBlacklistedPlayer) continue;
-                
+                const hasBlacklistedPlayer = table.some(playerId => player.blacklist.has(playerId) ||
+                    (PLAYERS[playerId] && PLAYERS[playerId].blacklist.has(player.id)));
+                if (hasBlacklistedPlayer)
+                    continue;
                 // Empty table is a reasonable choice for last resort
                 if (table.length === 0) {
                     bestTable = i;
                     bestTableScore = 1; // Good but not perfect
                     continue;
                 }
-                
                 // Calculate power level match
                 const tablePlayers = table.map(id => PLAYERS[id]);
                 const tableHighestPowers = tablePlayers.map(p => Math.max(...Array.from(p.power)));
                 const tableAveragePower = tableHighestPowers.reduce((a, b) => a + b, 0) / tableHighestPowers.length;
-                
                 // Score based on power level match (lower is better)
                 let tableScore = Math.abs(playerHighestPower - tableAveragePower) * 10;
-                
                 // Strongly prefer tables with the exact same power level
                 if (Math.abs(playerHighestPower - tableAveragePower) < 0.1) {
                     tableScore = 0; // Perfect match
                 }
-                
                 // Prefer tables that are closer to being full
                 tableScore -= table.length;
-                
                 // Keep track of the best table
                 if (tableScore < bestTableScore) {
                     bestTableScore = tableScore;
                     bestTable = i;
                 }
             }
-            
             // Assign to the best table or create a new one if needed
             if (bestTable >= 0) {
                 tables[bestTable].push(player.id);
                 assignedPlayers.add(player.id);
-            } else {
+            }
+            else {
                 // Try to find any table with space
                 for (let i = 0; i < tables.length; i++) {
                     if (tables[i].length < MAXSEATS) {
@@ -1860,32 +1554,27 @@ function generateFallbackSolution(players: Array<Player>, maxTablesCount: number
             }
         }
     }
-    
     // Remove empty tables
     const nonEmptyTables = tables.filter(table => table.length > 0);
-    
     // Check if we assigned everyone
     const missingPlayers = availablePlayers.filter(p => !assignedPlayers.has(p.id));
     if (missingPlayers.length > 0) {
         console.warn(`Failed to assign ${missingPlayers.length} players: ${missingPlayers.map(p => p.name).join(', ')}`);
     }
-    
     // Score the solution using the same heuristic as the A* search
     const heuristic = new Heuristic(MAXSEATS);
-    
     // Build a State object to evaluate the solution
     const tablesAsTableObjects = nonEmptyTables.map((playerIds, idx) => {
         const table = new Table(idx);
         playerIds.forEach(playerId => table.seatPlayer(playerId));
         return table;
     });
-    
     const state = new State(tablesAsTableObjects, []);
     const score = heuristic.evalState(state);
-    
     // Return the final solution
     return {
         seatings: nonEmptyTables,
         score: score
     };
 }
+//# sourceMappingURL=agent.js.map

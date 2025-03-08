@@ -23,7 +23,24 @@ Technical explanation of the ordering process:
     within a table are not unique, and neither are tables, the search tree is reduced to pow(N - 4).
     The complete size of the search space lies around C(N, N-4)
 ```
-
+Structure of the project:
+* main.ts: contains the main logic for the project
+* agent.ts: contains the logic for the search agents
+* html: contains the html for the project
+* styles: contains the styles for the project
+* media: contains the media for the project
+```
+/Users/raggi/code/personal/PodPal
+.
+├── README.md
+├── agent.ts
+├── index.html
+├── main.ts
+├── media
+│   └── circle.png
+└── styles
+    └── main.css
+```
 
 ## Setup
 This project develops the javascript code used in the html document using typescript via the typescript compiler.
@@ -36,6 +53,31 @@ Snuffs out errors related to Sets not being valid objects.
 
 Compiling the code works as follows:
 > tsc -m es2020 --downlevelIteration --skipLibCheck ts/file.ts
+
+Or use the provided compile script:
+> ./compile.sh
+
+## Changelog
+
+### March 2025 UI Improvements
+
+#### Added
+- Side information panel replacing the welcome popup
+- 3-column grid layout for pods
+- Improved table-like appearance for pods
+- Empty pod placeholders to maintain grid structure
+
+#### Changed
+- Removed play history visual connections for cleaner UI
+- Improved pod header styling
+- Enhanced player seat styling for better readability
+- Optimized layout for better space utilization
+- Updated empty seat styling
+
+#### Fixed
+- Fixed power level display in player pods
+- Improved matchmaking algorithm to better group players by power level
+- Fixed visual inconsistencies in the pod layout
 
 # TODOS:
 
@@ -70,3 +112,5 @@ Compiling the code works as follows:
         Keep track of players that have played with eachother
         This can be from import/exporting file or other methods
         The PodSorter should try pair people that have played least together.
+
+    #6 Add support for commander brackets system

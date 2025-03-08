@@ -1,4 +1,57 @@
-*.js
-node_modules/*
-*.json
-.vscode/*
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build artifacts
+# Note: We're keeping the compiled JS files for deployment
+# *.js
+*.js.map
+dist/
+build/
+coverage/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# IDE files
+.vscode/
+.idea/
+*.sublime-*
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+.directory
+desktop.ini
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+logs/
+*.log
+
+# Package files
+# Uncomment if you're using npm
+# package-lock.json
+# Uncomment if you're using yarn
+# yarn.lock
+
+# Temporary files
+tmp/
+temp/
+.cache/
+
+# Media files that shouldn't be in git (if applicable)
+# Uncomment if needed
+# media/large-assets/
+# *.mp4
+# *.mov

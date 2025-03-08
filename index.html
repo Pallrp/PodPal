@@ -10,6 +10,35 @@
     </head>
     <body>
         <div class="container">
+            <!-- Add side info panel -->
+            <div id="info-sidebar" class="info-sidebar">
+                <div class="info-header">
+                    <h4>PodPal Guide</h4>
+                    <button type="button" class="info-toggle-btn" id="toggle-info-btn">
+                        <span class="toggle-icon">◀</span>
+                    </button>
+                </div>
+                <div class="info-content">
+                    <div class="info-section">
+                        <h5>Key Features:</h5>
+                        <ul>
+                            <li><span class="highlight">Search Algorithm:</span> Efficient pod arrangement with real-time progress tracking</li>
+                            <li><span class="highlight">Play History:</span> Track and visualize who has played together</li>
+                            <li><span class="highlight">User Interface:</span> Improved visual design and feedback</li>
+                            <li><span class="highlight">Player Management:</span> Better blacklist/whitelist system</li>
+                        </ul>
+                    </div>
+                    <div class="info-section">
+                        <h5>Quick Start:</h5>
+                        <ol>
+                            <li>Add players with their power levels</li>
+                            <li>Click "Cook" to arrange balanced pods</li>
+                            <li>Drag players between pods if needed</li>
+                            <li>Use BL/WL buttons to manage player preferences</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
             <div id="top-container" class="col">
                 <div id="form-container" class="flex">
                     <form id="add-player-form" class="fill-half">
@@ -19,10 +48,27 @@
                         </div>
                         <div class="form-container-content col mt-3">
                             <div>
-                                <label for="add-player-power">Power Level</label>
+                                <label>Power Levels</label>
                             </div>
-                            <!-- populated in main -->
-                            <select name="input-player-power" id="add-player-power" multiple></select> <!-- TODO: add support for multiple-->
+                            <div id="power-level-checkboxes" class="power-checkboxes">
+                                <!-- Simple checkbox inputs instead of fancy styling -->
+                                <label class="power-checkbox-container">
+                                    <input type="checkbox" id="power-level-4" value="4" data-power-level="4">
+                                    CEDH
+                                </label>
+                                <label class="power-checkbox-container">
+                                    <input type="checkbox" id="power-level-3" value="3" data-power-level="3">
+                                    High
+                                </label>
+                                <label class="power-checkbox-container">
+                                    <input type="checkbox" id="power-level-2" value="2" data-power-level="2">
+                                    Mid
+                                </label>
+                                <label class="power-checkbox-container">
+                                    <input type="checkbox" id="power-level-1" value="1" data-power-level="1">
+                                    Casual
+                                </label>
+                            </div>
                             <div>
                                 <button id="submit-player" type="button">
                                     Add Player
@@ -32,12 +78,17 @@
                     </form>
                     <div class="text-center align-content-center w-50 table-order">
                         <h2>Table ordering</h2>
-                        <button type="button" class="search-btn" id="activate-search-agent">
-                            <span id="search-title">Cook</span>
-                        </button>
-                        <button type="button" class="search-btn" id="activate-random-agent">
-                            <span id="search-title">Shuffle</span>
-                        </button>
+                        <div class="mb-2">
+                            <button type="button" class="search-btn btn btn-primary" id="activate-search-agent">
+                                <span id="search-title">Cook</span>
+                            </button>
+                            <button type="button" class="search-btn btn btn-secondary" id="activate-random-agent">
+                                <span id="search-title">Shuffle</span>
+                            </button>
+                            <button type="button" class="btn btn-info" id="config-button" data-bs-toggle="modal" data-bs-target="#configModal">
+                                <span>Configure</span>
+                            </button>
+                        </div>
                         <img id="loading-spinner" class="loader d-none" src="media/circle.png" alt="manasymbols"/>
                     </div>
                 </div>
@@ -119,7 +170,217 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Configuration Modal -->
+        <div class="modal fade" id="configModal" tabindex="-1" aria-labelledby="configModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="configModalLabel">PodPal Configuration</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <ul class="nav nav-tabs" id="configTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="weights-tab" data-bs-toggle="tab" data-bs-target="#weights" type="button" role="tab" aria-controls="weights" aria-selected="true">Heuristic Weights</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history" type="button" role="tab" aria-controls="history" aria-selected="false">Play History</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="help-tab" data-bs-toggle="tab" data-bs-target="#help" type="button" role="tab" aria-controls="help" aria-selected="false">Help</button>
+                            </li>
+                        </ul>
+                        <div class="tab-content p-3" id="configTabsContent">
+                            <!-- Heuristic Weights Tab -->
+                            <div class="tab-pane fade show active" id="weights" role="tabpanel" aria-labelledby="weights-tab">
+                                <form id="weights-form">
+                                    <div class="mb-3 row">
+                                        <label for="powerImbalanceWeight" class="form-label col-sm-4">Power Imbalance Weight</label>
+                                        <div class="col-sm-8">
+                                            <input type="range" class="form-range" min="0" max="50" step="1" id="powerImbalanceWeight">
+                                            <div class="d-flex justify-content-between">
+                                                <span>0</span>
+                                                <span id="powerImbalanceValue">10</span>
+                                                <span>50</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3 row">
+                                        <label for="powerDiversityWeight" class="form-label col-sm-4">Power Diversity Weight</label>
+                                        <div class="col-sm-8">
+                                            <input type="range" class="form-range" min="0" max="100" step="5" id="powerDiversityWeight">
+                                            <div class="d-flex justify-content-between">
+                                                <span>0</span>
+                                                <span id="powerDiversityValue">40</span>
+                                                <span>100</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3 row">
+                                        <label for="powerDiffWeight" class="form-label col-sm-4">Power Difference Weight</label>
+                                        <div class="col-sm-8">
+                                            <input type="range" class="form-range" min="0" max="1" step="0.05" id="powerDiffWeight">
+                                            <div class="d-flex justify-content-between">
+                                                <span>0</span>
+                                                <span id="powerDiffValue">0.1</span>
+                                                <span>1</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3 row">
+                                        <label for="blacklistWeight" class="form-label col-sm-4">Blacklist Weight</label>
+                                        <div class="col-sm-8">
+                                            <input type="range" class="form-range" min="0" max="100" step="5" id="blacklistWeight">
+                                            <div class="d-flex justify-content-between">
+                                                <span>0</span>
+                                                <span id="blacklistValue">50</span>
+                                                <span>100</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3 row">
+                                        <label for="emptySeatWeight" class="form-label col-sm-4">Empty Seat Weight</label>
+                                        <div class="col-sm-8">
+                                            <input type="range" class="form-range" min="0" max="60" step="5" id="emptySeatWeight">
+                                            <div class="d-flex justify-content-between">
+                                                <span>0</span>
+                                                <span id="emptySeatValue">30</span>
+                                                <span>60</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3 row">
+                                        <label for="unseatedWeight" class="form-label col-sm-4">Unseated Player Weight</label>
+                                        <div class="col-sm-8">
+                                            <input type="range" class="form-range" min="0" max="10" step="0.5" id="unseatedWeight">
+                                            <div class="d-flex justify-content-between">
+                                                <span>0</span>
+                                                <span id="unseatedValue">1</span>
+                                                <span>10</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3 row">
+                                        <label for="playHistoryWeight" class="form-label col-sm-4">Play History Weight</label>
+                                        <div class="col-sm-8">
+                                            <input type="range" class="form-range" min="0" max="20" step="1" id="playHistoryWeight">
+                                            <div class="d-flex justify-content-between">
+                                                <span>0</span>
+                                                <span id="playHistoryValue">5</span>
+                                                <span>20</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="text-center">
+                                        <button type="button" id="reset-weights-btn" class="btn btn-secondary">Reset to Defaults</button>
+                                        <button type="button" id="apply-weights-btn" class="btn btn-primary">Apply Weights</button>
+                                    </div>
+                                </form>
+                            </div>
+                            
+                            <!-- Play History Tab -->
+                            <div class="tab-pane fade" id="history" role="tabpanel" aria-labelledby="history-tab">
+                                <div class="mb-3">
+                                    <h5>Play History Management</h5>
+                                    <p>
+                                        PodPal can track which players have played together to help create more diverse pairings over time.
+                                        You can export this history to save it, or import a previously saved history file.
+                                    </p>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <button type="button" id="export-history-btn" class="btn btn-primary">Export Play History</button>
+                                    <button type="button" id="clear-history-btn" class="btn btn-danger">Clear Play History</button>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="import-history" class="form-label">Import Play History:</label>
+                                    <input class="form-control" type="file" id="import-history" accept=".json">
+                                </div>
+                            </div>
+                            
+                            <!-- Help Tab -->
+                            <div class="tab-pane fade" id="help" role="tabpanel" aria-labelledby="help-tab">
+                                <div class="mb-4">
+                                    <h4 class="mb-3">How to Use PodPal</h4>
+                                    
+                                    <div class="card mb-3">
+                                        <div class="card-header bg-primary text-white">
+                                            <h5 class="mb-0">Adding and Managing Players</h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <ol>
+                                                <li>Enter a player name and select one or more power levels</li>
+                                                <li>Click "Add Player" to add them to the signup list</li>
+                                                <li>Use BL/WL buttons to manage blacklist/whitelist for each player</li>
+                                                <li>Click the red X to remove a player</li>
+                                            </ol>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="card mb-3">
+                                        <div class="card-header bg-success text-white">
+                                            <h5 class="mb-0">Creating Pods</h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <ol>
+                                                <li>Click "Cook" to generate an optimized pod arrangement</li>
+                                                <li>Click "Shuffle" for a random arrangement</li>
+                                                <li>Click "Add Pod" to create an additional empty pod</li>
+                                                <li>Click "Remove Pod" to remove the last pod</li>
+                                            </ol>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="card mb-3">
+                                        <div class="card-header bg-info text-white">
+                                            <h5 class="mb-0">Managing Pods</h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <ol>
+                                                <li><strong>Drag and Drop:</strong> Move players between pods by dragging them</li>
+                                                <li><strong>Player Swapping:</strong> Drag a player directly onto another player to swap their positions</li>
+                                                <li><strong>Re-evaluate Solution:</strong> After manual changes, click to recalculate the solution score</li>
+                                                <li><strong>Save Solution:</strong> Store the current arrangement for later reference</li>
+                                            </ol>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="card">
+                                        <div class="card-header bg-warning text-dark">
+                                            <h5 class="mb-0">Tips</h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <ul>
+                                                <li>Players with similar power levels work best together</li>
+                                                <li>The score indicates the quality of the match - lower is better</li>
+                                                <li>Use the blacklist to prevent specific players from being paired</li>
+                                                <li>Use the whitelist to keep friends together</li>
+                                                <li>Play history helps create diverse pairings over multiple events</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
         <script src="main.js"></script>
         <script id="agent-script" src="agent.js"></script>
+        <script id="csv-importer-script" src="csv_importer.js"></script>
     </body>
 </html>
